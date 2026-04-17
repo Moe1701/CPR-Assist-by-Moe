@@ -17,7 +17,7 @@ window.CPR.MedsButton = (function() {
         }
     }
 
-    // Steuert das exakte Aussehen des Buttons
+    // Steuert das exakte Aussehen des Buttons, OHNE das Layout zu zerstören
     function updateUI() {
         const btn = document.getElementById(BUTTON_ID);
         const state = window.CPR.AppState;
@@ -39,8 +39,9 @@ window.CPR.MedsButton = (function() {
                 </div>
             `;
             
-            // Visuelles Styling für Direkt-Gabe (Violett)
-            btn.className = "satellite-btn pointer-events-auto sat-interactive opacity-100 bg-purple-50 border-2 border-purple-300 text-purple-600 rounded-full shadow-lg transition-all duration-300";
+            // Pro-Coding: Alte Klassen entfernen, neue hinzufügen (Orbit-Struktur bleibt intakt!)
+            btn.classList.remove('bg-white', 'border-purple-100', 'text-slate-500');
+            btn.classList.add('bg-purple-50', 'border-purple-300', 'text-purple-600');
             
         } else {
             // ---> MODUS: STANDARD MEDS MENÜ <---
@@ -54,8 +55,9 @@ window.CPR.MedsButton = (function() {
                 </div>
             `;
             
-            // Visuelles Styling für Menü (Weiß/Grau)
-            btn.className = "satellite-btn pointer-events-auto sat-interactive opacity-100 bg-white border-2 border-purple-100 text-slate-500 rounded-full shadow-lg transition-all duration-300";
+            // Pro-Coding: Wieder auf Standard-Design zurücksetzen
+            btn.classList.remove('bg-purple-50', 'border-purple-300', 'text-purple-600');
+            btn.classList.add('bg-white', 'border-purple-100', 'text-slate-500');
         }
     }
 
@@ -76,17 +78,16 @@ window.CPR.MedsButton = (function() {
             const doseStr = getDoseStr(count);
             state.amioCount = count + 1; // Zähler erhöhen
             
-            // Ins Logbuch schreiben
+            // Ins Logbuch schreiben & Speichern
             if (window.addLogEntry) window.addLogEntry(`Amiodaron ${doseStr} gegeben`);
             if (window.CPR.Utils && window.CPR.Utils.saveSession) window.CPR.Utils.saveSession();
             
-            // Button sofort aufs nächste Level aktualisieren (150mg oder Menü)
+            // Button sofort aufs nächste Level aktualisieren (150mg oder wieder zurück zum Menü)
             updateUI();
             
         } else {
             // 2. ÖFFNEN DES STANDARD-MENÜS
             if (window.CPR.UI && window.CPR.UI.navigate) {
-                // Wir nutzen den globalen navHelper bzw. UI.switchView
                 window.CPR.UI.navigate('MEDS_MENU', 'view-meds-menu', 'large');
             }
         }
@@ -96,7 +97,8 @@ window.CPR.MedsButton = (function() {
         init: function() {
             const btn = document.getElementById(BUTTON_ID);
             if (btn) {
-                // Event-Listener anhängen
+                // Event-Listener sicherheitshalber resetten, um Doppelklicks zu vermeiden
+                btn.removeEventListener('click', handleButtonClick);
                 btn.addEventListener('click', handleButtonClick);
             }
         },
