@@ -1,16 +1,14 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - Timer und CCF pausieren exakt während der Rhythmusanalyse.
- * - Alle Timer nutzen Date.now() Deltas (Sicher gegen Background-Throttling).
- * - SMART MEDS: Amiodaron-Direktgabe über meds-button.js voll integriert.
- * - FIX: Gefährlicher SVG-Repair-Block entfernt (Canvas-Ringe laufen nativ).
+ * - Alle Timer nutzen Date.now() Deltas.
+ * - SMART MEDS: Chamäleon-Logik direkt im Hauptsystem (Cache-sicher).
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     const CPR = window.CPR;
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
 
-    // --- HILFSFUNKTIONEN ---
     function navHelper(newState, viewId, size) {
         if (newState) { AppState.previousState = AppState.state; AppState.state = newState; }
         if (UI && typeof UI.switchView === 'function') { UI.switchView(viewId); }
@@ -50,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- LOGBUCH EINTRAG ERSTELLEN ---
+    // --- LOGBUCH ---
     function addLogEntry(txt) {
         if (!AppState.protocolData) AppState.protocolData = [];
         AppState.protocolData.push({
@@ -71,14 +69,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     window.addLogEntry = addLogEntry;
 
-    // --- TIMING & CCF LOGIK (Background-Safe) ---
+    // --- TIMING & CCF ---
     function startMainTimer() {
         const topStats = document.getElementById('top-stats-container');
         if (topStats) topStats.classList.remove('hidden');
         const startTimeEl = document.getElementById('start-time');
-        if (startTimeEl && startTimeEl.innerText === '--:--') {
-            startTimeEl.innerText = "Start: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-        }
+        if (startTimeEl && startTimeEl.innerText === '--:--') startTimeEl.innerText = "Start: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
         
         if (Globals.mainInterval) clearInterval(Globals.mainInterval);
         
@@ -91,15 +87,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (deltaMs >= 1000) {
                     const deltaSec = Math.floor(deltaMs / 1000);
-                    
                     AppState.totalSeconds += deltaSec;
                     if (AppState.state !== 'ROSC_ACTIVE') {
                         AppState.arrestSeconds += deltaSec;
-                        if (AppState.isCompressing) {
-                            AppState.compressingSeconds += deltaSec;
-                        } else if (AppState.isVentilationPhase) {
-                            AppState.ventilationSeconds = (AppState.ventilationSeconds || 0) + deltaSec;
-                        }
+                        if (AppState.isCompressing) AppState.compressingSeconds += deltaSec;
+                        else if (AppState.isVentilationPhase) AppState.ventilationSeconds = (AppState.ventilationSeconds || 0) + deltaSec;
                     }
                     
                     const mainTimerEl = document.getElementById('main-timer');
@@ -133,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- SYNCHRONER BEAT-LISTENER ---
+    // --- CPR & HANDS-OFF LOGIK ---
     window.CPR.onBeat = function() {
         if (!AppState.isCompressing || AppState.isRunning === false) return;
         
@@ -152,36 +144,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const limit = AppState.isPediatric ? 15 : 30;
             const badge = document.getElementById('cpr-counter-badge');
             if (badge) { badge.innerText = AppState.compressionCount; badge.classList.remove('hidden'); }
-            
             if (AppState.compressionCount >= limit) triggerVentilationPhase();
         }
     };
 
     function triggerVentilationPhase() {
-        AppState.isCompressing = false; 
-        AppState.isVentilationPhase = true; 
-        AppState.compressionCount = 0; 
-        updateCprUI();
-        
+        AppState.isCompressing = false; AppState.isVentilationPhase = true; AppState.compressionCount = 0; updateCprUI();
         if (AudioEngine && typeof AudioEngine.playVentilationSound === 'function') {
             AudioEngine.playVentilationSound();
-            setTimeout(() => {
-                if (AppState.isVentilationPhase && AppState.isRunning) {
-                    AudioEngine.playVentilationSound();
-                }
-            }, 1000);
+            setTimeout(() => { if (AppState.isVentilationPhase && AppState.isRunning) AudioEngine.playVentilationSound(); }, 1000);
         }
-
         setTimeout(() => {
             if (AppState.isRunning && AppState.state !== 'DECISION') {
-                AppState.isVentilationPhase = false; 
-                AppState.isCompressing = true; 
-                updateCprUI();
+                AppState.isVentilationPhase = false; AppState.isCompressing = true; updateCprUI();
             }
         }, 2200); 
     }
 
-    // --- UI FÜR CPR-BUTTON & HANDS-OFF-TIMER (Background-Safe) ---
     function updateCprUI() {
         const btnCpr = document.getElementById('btn-cpr');
         const badge = document.getElementById('cpr-counter-badge');
@@ -214,16 +193,12 @@ document.addEventListener('DOMContentLoaded', function() {
             AppState.isVentilationPhase = false;
             if (iconNormal) iconNormal.classList.add('hidden');
             if (iconVent) iconVent.classList.add('hidden');
-            if (iconPause) {
-                iconPause.classList.remove('hidden', 'text-red-600');
-                iconPause.classList.add('text-slate-400'); 
-            }
+            if (iconPause) { iconPause.classList.remove('hidden', 'text-red-600'); iconPause.classList.add('text-slate-400'); }
             if (mainText) mainText.innerText = "CPR PAUSIEREN";
             
             if (badge) {
-                if (AppState.cprMode !== 'continuous' && AppState.compressionCount > 0) {
-                    badge.innerText = AppState.compressionCount; badge.classList.remove('hidden');
-                } else { badge.classList.add('hidden'); }
+                if (AppState.cprMode !== 'continuous' && AppState.compressionCount > 0) { badge.innerText = AppState.compressionCount; badge.classList.remove('hidden'); } 
+                else { badge.classList.add('hidden'); }
             }
             
             if (AudioEngine && typeof AudioEngine.init === 'function') AudioEngine.init();
@@ -236,7 +211,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (iconVent) iconVent.classList.remove('hidden');
             if (mainText) mainText.innerText = "BEATMEN";
             if (badge) badge.classList.add('hidden');
-            
         } else {
             if (iconVent) iconVent.classList.add('hidden');
             if (iconPause) iconPause.classList.add('hidden');
@@ -246,14 +220,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const st = AppState.state || 'IDLE';
             if (st !== 'IDLE' && !st.startsWith('OB_') && st !== 'END' && st !== 'ROSC_ACTIVE') {
-                Globals.pauseSeconds = 0;
-                let pauseStartTime = Date.now();
-                let lastVibratedSecond = -1; 
-                
-                if (handsOffTimer) {
-                    handsOffTimer.innerText = "0s Pause";
-                    handsOffTimer.classList.remove('hidden');
-                }
+                Globals.pauseSeconds = 0; let pauseStartTime = Date.now(); let lastVibratedSecond = -1; 
+                if (handsOffTimer) { handsOffTimer.innerText = "0s Pause"; handsOffTimer.classList.remove('hidden'); }
 
                 Globals.pauseInterval = setInterval(() => {
                     if (AppState.isRunning !== false) {
@@ -261,52 +229,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (handsOffTimer) handsOffTimer.innerText = Globals.pauseSeconds + "s Pause";
                         
                         if (Globals.pauseSeconds >= 10) {
-                            if (btnCpr) {
-                                btnCpr.classList.add('bg-red-50', 'border-red-600', 'animate-pulse', 'shadow-[0_0_80px_rgba(227,0,15,1)]', 'scale-110');
-                                btnCpr.classList.remove('bg-amber-50', 'bg-white', 'border-amber-400', 'border-slate-100');
-                            }
-                            if (handsOffTimer) {
-                                handsOffTimer.classList.remove('bg-slate-700/85', 'bg-amber-500/90');
-                                handsOffTimer.classList.add('bg-red-600/90');
-                            }
-                            if (iconNormal) {
-                                iconNormal.classList.remove('text-emerald-500', 'text-amber-500');
-                                iconNormal.classList.add('text-red-600', 'drop-shadow-[0_0_20px_rgba(227,0,15,1)]', 'scale-110');
-                            }
-                            if (mainText) {
-                                mainText.classList.remove('text-slate-600', 'text-amber-600');
-                                mainText.classList.add('text-red-600');
-                            }
-                            if (Globals.pauseSeconds % 2 === 0 && lastVibratedSecond !== Globals.pauseSeconds) {
-                                Utils.vibrate([150, 50, 150]);
-                                lastVibratedSecond = Globals.pauseSeconds;
-                            }
-                            
+                            if (btnCpr) { btnCpr.classList.add('bg-red-50', 'border-red-600', 'animate-pulse', 'shadow-[0_0_80px_rgba(227,0,15,1)]', 'scale-110'); btnCpr.classList.remove('bg-amber-50', 'bg-white', 'border-amber-400', 'border-slate-100'); }
+                            if (handsOffTimer) { handsOffTimer.classList.remove('bg-slate-700/85', 'bg-amber-500/90'); handsOffTimer.classList.add('bg-red-600/90'); }
+                            if (iconNormal) { iconNormal.classList.remove('text-emerald-500', 'text-amber-500'); iconNormal.classList.add('text-red-600', 'drop-shadow-[0_0_20px_rgba(227,0,15,1)]', 'scale-110'); }
+                            if (mainText) { mainText.classList.remove('text-slate-600', 'text-amber-600'); mainText.classList.add('text-red-600'); }
+                            if (Globals.pauseSeconds % 2 === 0 && lastVibratedSecond !== Globals.pauseSeconds) { Utils.vibrate([150, 50, 150]); lastVibratedSecond = Globals.pauseSeconds; }
                         } else if (Globals.pauseSeconds >= 5) {
-                            if (btnCpr) {
-                                btnCpr.classList.add('bg-amber-50', 'border-amber-400', 'shadow-[0_0_20px_rgba(245,158,11,0.5)]');
-                                btnCpr.classList.remove('bg-white', 'border-slate-100');
-                            }
-                            if (handsOffTimer) {
-                                handsOffTimer.classList.remove('bg-slate-700/85');
-                                handsOffTimer.classList.add('bg-amber-500/90');
-                            }
-                            if (iconNormal) {
-                                iconNormal.classList.remove('text-emerald-500', 'text-amber-500');
-                                iconNormal.classList.add('text-amber-500');
-                            }
-                            if (mainText) {
-                                mainText.classList.remove('text-slate-600');
-                                mainText.classList.add('text-amber-600');
-                            }
-                            if (Globals.pauseSeconds === 5 && lastVibratedSecond !== Globals.pauseSeconds) {
-                                Utils.vibrate(50);
-                                lastVibratedSecond = Globals.pauseSeconds;
-                            }
+                            if (btnCpr) { btnCpr.classList.add('bg-amber-50', 'border-amber-400', 'shadow-[0_0_20px_rgba(245,158,11,0.5)]'); btnCpr.classList.remove('bg-white', 'border-slate-100'); }
+                            if (handsOffTimer) { handsOffTimer.classList.remove('bg-slate-700/85'); handsOffTimer.classList.add('bg-amber-500/90'); }
+                            if (iconNormal) { iconNormal.classList.remove('text-emerald-500', 'text-amber-500'); iconNormal.classList.add('text-amber-500'); }
+                            if (mainText) { mainText.classList.remove('text-slate-600'); mainText.classList.add('text-amber-600'); }
+                            if (Globals.pauseSeconds === 5 && lastVibratedSecond !== Globals.pauseSeconds) { Utils.vibrate(50); lastVibratedSecond = Globals.pauseSeconds; }
                         }
-                    } else {
-                        pauseStartTime = Date.now() - (Globals.pauseSeconds * 1000);
-                    }
+                    } else { pauseStartTime = Date.now() - (Globals.pauseSeconds * 1000); }
                 }, 200);
             }
         }
@@ -316,7 +251,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function updatePediRoscVitals() {
         const vitalsCard = document.getElementById('pedi-rosc-vitals');
         if (!vitalsCard) return;
-
         if (AppState.isPediatric && AppState.patientWeight) {
             const kg = AppState.patientWeight;
             let age = 0; if (kg >= 10) age = Math.max(1, Math.round((kg / 2) - 4));
@@ -329,16 +263,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const elHr = document.getElementById('pedi-rosc-hr'); if (elHr) elHr.innerText = hr;
             const elVt = document.getElementById('pedi-rosc-vt'); if (elVt) elVt.innerText = "~ " + vt;
             vitalsCard.classList.remove('hidden');
-        } else {
-            vitalsCard.classList.add('hidden');
-        }
+        } else { vitalsCard.classList.add('hidden'); }
     }
 
     function startRoscTimer() {
         if (Globals.roscInterval) clearInterval(Globals.roscInterval);
-        Globals.roscSeconds = 0;
-        let roscStartTime = Date.now();
-        
+        Globals.roscSeconds = 0; let roscStartTime = Date.now();
         Globals.roscInterval = setInterval(() => {
             Globals.roscSeconds = Math.floor((Date.now() - roscStartTime) / 1000);
             const roscTimer = document.getElementById('rosc-timer-display');
@@ -348,9 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function triggerDebrief(reason) {
-        Utils.vibrate(50); 
-        addLogEntry("EINSATZ BEENDET - " + reason);
-        AppState.isRunning = false;
+        Utils.vibrate(50); addLogEntry("EINSATZ BEENDET - " + reason); AppState.isRunning = false;
         if (AppState.state !== 'ROSC_ACTIVE') AppState.state = 'END';
         
         if (Globals.pauseInterval) { clearInterval(Globals.pauseInterval); Globals.pauseInterval = null; }
@@ -358,12 +286,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (Globals.mainInterval) { clearInterval(Globals.mainInterval); Globals.mainInterval = null; }
         if (CPR.CPRTimer && typeof CPR.CPRTimer.pause === 'function') CPR.CPRTimer.pause();
         
-        const arrSec = AppState.arrestSeconds || 0;
-        const compSec = AppState.compressingSeconds || 0;
-        const totSec = AppState.totalSeconds || 0;
+        const arrSec = AppState.arrestSeconds || 0; const compSec = AppState.compressingSeconds || 0; const totSec = AppState.totalSeconds || 0;
         const ccf = arrSec > 0 ? Math.min(100, Math.round((compSec / arrSec) * 100)) : 0;
-        const m = Math.floor(totSec / 60).toString().padStart(2, '0');
-        const s = (totSec % 60).toString().padStart(2, '0');
+        const m = Math.floor(totSec / 60).toString().padStart(2, '0'); const s = (totSec % 60).toString().padStart(2, '0');
         
         const durEl = document.getElementById('debrief-duration'); if(durEl) durEl.innerText = m + ":" + s;
         const ccfEl = document.getElementById('debrief-ccf'); if(ccfEl) ccfEl.innerText = ccf + "%";
@@ -375,40 +300,21 @@ document.addEventListener('DOMContentLoaded', function() {
         Utils.saveSession();
     }
 
+    // --- EVENT LISTENER SETUP ---
     function initHeaderEvents() {
         addClick('btn-toggle-sound', () => {
-            Utils.vibrate(20);
-            AppState.isSoundActive = !AppState.isSoundActive;
-            const ion = document.getElementById('icon-sound-on');
-            const ioff = document.getElementById('icon-sound-off');
-            if (ion && ioff) {
-                ion.classList.toggle('hidden', !AppState.isSoundActive);
-                ioff.classList.toggle('hidden', AppState.isSoundActive);
-            }
-            addLogEntry("Sound " + (AppState.isSoundActive ? "AN" : "AUS"));
-            Utils.saveSession();
+            Utils.vibrate(20); AppState.isSoundActive = !AppState.isSoundActive;
+            const ion = document.getElementById('icon-sound-on'); const ioff = document.getElementById('icon-sound-off');
+            if (ion && ioff) { ion.classList.toggle('hidden', !AppState.isSoundActive); ioff.classList.toggle('hidden', AppState.isSoundActive); }
+            addLogEntry("Sound " + (AppState.isSoundActive ? "AN" : "AUS")); Utils.saveSession();
         });
-
-        addClick('btn-help', () => {
-            Utils.vibrate(20);
-            if (window.CPR.HelpOverlay && typeof window.CPR.HelpOverlay.toggle === 'function') {
-                window.CPR.HelpOverlay.toggle();
-            }
-        });
-
-        addClick('btn-settings', () => {
-            Utils.vibrate(20);
-            document.getElementById('settings-modal')?.classList.replace('hidden', 'flex');
-        });
+        addClick('btn-help', () => { Utils.vibrate(20); if (window.CPR.HelpOverlay && typeof window.CPR.HelpOverlay.toggle === 'function') window.CPR.HelpOverlay.toggle(); });
+        addClick('btn-settings', () => { Utils.vibrate(20); document.getElementById('settings-modal')?.classList.replace('hidden', 'flex'); });
     }
 
     function initPatientSetupEvents() {
-        const sAge = document.getElementById('slider-age');
-        const sKg = document.getElementById('slider-kg');
-        const sCm = document.getElementById('slider-cm');
-        const valAge = document.getElementById('val-age');
-        const valKg = document.getElementById('val-kg');
-        const valCm = document.getElementById('val-cm');
+        const sAge = document.getElementById('slider-age'); const sKg = document.getElementById('slider-kg'); const sCm = document.getElementById('slider-cm');
+        const valAge = document.getElementById('val-age'); const valKg = document.getElementById('val-kg'); const valCm = document.getElementById('val-cm');
 
         function updateColorHighlight(kg) {
             if (!broselowData) return;
@@ -436,11 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sCm) sCm.addEventListener('input', () => sync('cm'));
 
         document.querySelectorAll('.broselow-btn').forEach(btn => { 
-            btn.addEventListener('click', (e) => { 
-                Utils.vibrate(20); const color = e.currentTarget.dataset.color; 
-                const zone = broselowData ? broselowData.find(z => z.color === color) : null; 
-                if (zone && sKg) { sKg.value = zone.avgKg; sync('kg'); } 
-            }); 
+            btn.addEventListener('click', (e) => { Utils.vibrate(20); const color = e.currentTarget.dataset.color; const zone = broselowData ? broselowData.find(z => z.color === color) : null; if (zone && sKg) { sKg.value = zone.avgKg; sync('kg'); } }); 
         });
 
         addClick('btn-pediatric-edit', (e) => { e.stopPropagation(); Utils.vibrate(30); document.getElementById('patient-setup-modal')?.classList.replace('hidden', 'flex'); });
@@ -491,28 +393,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         addClick('btn-permanent-analyze', (e) => { 
             e.stopPropagation(); if (Date.now() - (Globals.lastMenuAction || 0) < 500) return; 
-            Utils.vibrate(50); 
-            AppState.isCompressing = false; 
-            navHelper('DECISION', 'view-decision', 'large'); 
-            if (CPR.CPRTimer && typeof CPR.CPRTimer.pause === 'function') CPR.CPRTimer.pause(); 
-            updateCprUI(); 
+            Utils.vibrate(50); AppState.isCompressing = false; navHelper('DECISION', 'view-decision', 'large'); 
+            if (CPR.CPRTimer && typeof CPR.CPRTimer.pause === 'function') CPR.CPRTimer.pause(); updateCprUI(); 
         });
 
-        // --- SMART MEDS: Rhythmusentscheidungen triggern das Button-Update ---
+        // TRIGGERS FÜR DEN SMART-MEDS BUTTON
         addClick('btn-shockable', (e) => { 
-            e.stopPropagation(); Utils.vibrate(40); 
-            AppState.isShockable = true; 
-            if (window.CPR.MedsButton && typeof window.CPR.MedsButton.update === 'function') window.CPR.MedsButton.update();
-            addLogEntry("Schockbar"); 
-            navHelper('JOULE', 'view-joule', 'large'); 
+            e.stopPropagation(); Utils.vibrate(40); AppState.isShockable = true; 
+            if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
+            addLogEntry("Schockbar"); navHelper('JOULE', 'view-joule', 'large'); 
         });
-        
         addClick('btn-non-shockable', (e) => { 
-            e.stopPropagation(); Utils.vibrate(40); 
-            AppState.isShockable = false; 
-            if (window.CPR.MedsButton && typeof window.CPR.MedsButton.update === 'function') window.CPR.MedsButton.update();
-            addLogEntry("Nicht Schockbar"); 
-            navHelper('WAITING_CPR_RESUME', 'view-cpr-resume', 'large'); 
+            e.stopPropagation(); Utils.vibrate(40); AppState.isShockable = false; 
+            if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
+            addLogEntry("Nicht Schockbar"); navHelper('WAITING_CPR_RESUME', 'view-cpr-resume', 'large'); 
         });
         
         addClick('view-joule', (e) => {
@@ -521,36 +415,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.stopPropagation(); AppState.shockCount = (AppState.shockCount || 0) + 1; 
                 const sL = document.getElementById('rhythm-info-shocks'); if(sL) sL.innerText = AppState.shockCount;
                 const jL = document.getElementById('rhythm-info-joule'); if(jL) jL.innerText = jBtn.dataset.joule;
-                addLogEntry(`Schock abgegeben: ${jBtn.dataset.joule}`); 
-                navHelper('WAITING_CPR_RESUME', 'view-cpr-resume', 'large'); 
+                addLogEntry(`Schock abgegeben: ${jBtn.dataset.joule}`); navHelper('WAITING_CPR_RESUME', 'view-cpr-resume', 'large'); 
             }
             if (e.target.id === 'btn-joule-cancel') { e.stopPropagation(); markMenuAction(); navHelper('DECISION', 'view-decision', 'large'); }
         });
 
-        addClick('btn-confirm-resume', (e) => {
-            e.stopPropagation(); Utils.vibrate([40, 40]);
-            AppState.isCompressing = true;
-            addLogEntry("Kompression FORTGESETZT");
-            activateDashboard(true); 
-            updateCprUI();
-            Utils.saveSession();
-        });
+        addClick('btn-confirm-resume', (e) => { e.stopPropagation(); Utils.vibrate([40, 40]); AppState.isCompressing = true; addLogEntry("Kompression FORTGESETZT"); activateDashboard(true); updateCprUI(); Utils.saveSession(); });
 
         addClick('btn-cpr', (e) => { 
             e.stopPropagation(); if (AppState.state === 'IDLE' || AppState.state === 'END') return; 
-            
-            if (AppState.state === 'WAITING_CPR_RESUME') {
-                Utils.vibrate([40, 40]);
-                AppState.isCompressing = true;
-                addLogEntry("Kompression FORTGESETZT");
-                activateDashboard(true); 
-                updateCprUI();
-                Utils.saveSession();
-                return;
-            }
-
-            AppState.isCompressing = !AppState.isCompressing; AppState.compressionCount = 0; 
-            addLogEntry(AppState.isCompressing ? "Kompression FORTGESETZT" : "Kompression PAUSE"); updateCprUI(); Utils.saveSession(); 
+            if (AppState.state === 'WAITING_CPR_RESUME') { Utils.vibrate([40, 40]); AppState.isCompressing = true; addLogEntry("Kompression FORTGESETZT"); activateDashboard(true); updateCprUI(); Utils.saveSession(); return; }
+            AppState.isCompressing = !AppState.isCompressing; AppState.compressionCount = 0; addLogEntry(AppState.isCompressing ? "Kompression FORTGESETZT" : "Kompression PAUSE"); updateCprUI(); Utils.saveSession(); 
         });
     }
 
@@ -562,25 +437,37 @@ document.addEventListener('DOMContentLoaded', function() {
             if (CPR.AdrTimer && typeof CPR.AdrTimer.start === 'function') CPR.AdrTimer.start(); Utils.saveSession();
         });
 
-        // INTELLIGENTER MEDS-BUTTON: Load-Safe Check
-        if (window.CPR.MedsButton && typeof window.CPR.MedsButton.init === 'function') {
-            window.CPR.MedsButton.init();
-        }
+        // 🌟 DIE DIREKTE KLICK-LOGIK FÜR DEN NEUEN SMART-BUTTON 🌟
+        addClick('btn-meds-menu', (e) => {
+            e.stopPropagation(); markMenuAction();
+            const btn = e.currentTarget;
+            if (btn.dataset.smartMode === "amio") {
+                // MODUS: DIREKT-GABE
+                Utils.vibrate(50);
+                const doseStr = btn.dataset.amioDose || "Amiodaron";
+                AppState.amioCount = (AppState.amioCount || 0) + 1;
+                addLogEntry(`Amiodaron ${doseStr} gegeben`);
+                if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
+                Utils.saveSession();
+            } else {
+                // MODUS: STANDARD-MENÜ
+                navHelper('MEDS_MENU', 'view-meds-menu', 'large');
+            }
+        });
 
         addClick('view-meds-menu', (e) => {
             const isCancel = e.target.closest('#btn-meds-cancel'); 
             const isOpt = e.target.closest('.btn-amio-opt') || e.target.closest('.btn-sonstige-opt');
             
             if (isCancel || isOpt) {
-                e.stopPropagation(); 
-                Utils.vibrate(30); 
-                markMenuAction();
+                e.stopPropagation(); Utils.vibrate(30); markMenuAction();
                 if (isOpt) { 
                     const logText = isOpt.dataset.log || isOpt.innerText.replace('\n', ' ').trim(); 
                     addLogEntry(`${logText} gegeben`); 
+                    // Wenn Amiodaron doch mal manuell via Menü gegeben wird, zählen wir brav mit
                     if (logText.includes('Amiodaron') || logText.includes('Amio')) {
                         AppState.amioCount = (AppState.amioCount || 0) + 1;
-                        if (window.CPR.MedsButton && typeof window.CPR.MedsButton.update === 'function') window.CPR.MedsButton.update();
+                        if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
                     }
                 }
                 navHelper(AppState.previousState === 'RUNNING' ? 'RUNNING' : 'DECISION', AppState.previousState === 'RUNNING' ? 'view-timer' : 'view-decision', AppState.previousState === 'RUNNING' ? 'small' : 'large');
@@ -720,7 +607,9 @@ document.addEventListener('DOMContentLoaded', function() {
             updateCCF(); 
             if (UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); 
             if (UI && typeof UI.updateAdrenalinBadge === 'function') UI.updateAdrenalinBadge();
-            if (window.CPR.MedsButton && typeof window.CPR.MedsButton.update === 'function') window.CPR.MedsButton.update();
+            
+            // FIX: Aufruf der Smart Meds Logik nach dem Laden der Session!
+            if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
 
             if (AppState.shockCount) {
                 const shockLabel = document.getElementById('rhythm-info-shocks');
