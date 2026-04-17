@@ -4,7 +4,6 @@ window.CPR.UI = (function() {
     return {
         // Schaltet zwischen den verschiedenen Menü-Ansichten im Zentrum um
         switchView: function(viewId) {
-            // FIX: 'view-cpr-resume' ist jetzt im Array und verhindert das Ghosting!
             const allViews = [
                 'view-ob-1', 'view-ob-2', 'view-ob-3', 'view-timer', 'view-decision', 
                 'view-cpr-resume', 'view-joule', 'view-airway', 'view-airway-doc', 
@@ -28,7 +27,6 @@ window.CPR.UI = (function() {
             if (targetEl) { 
                 targetEl.classList.remove('hidden'); 
                 
-                // Einige Ansichten brauchen flex-col, andere (absolute) nur flex
                 if(targetId === 'view-timer' || targetId === 'view-meds-menu' || targetId === 'view-airway' || targetId === 'view-airway-doc' || targetId === 'view-zugang' || targetId === 'view-rosc-end' || targetId === 'view-abbruch-reason' || targetId === 'view-cpr-resume') {
                     targetEl.classList.add('flex', 'flex-col'); 
                 } else {
@@ -42,8 +40,6 @@ window.CPR.UI = (function() {
                 else svgCircle.classList.add('opacity-0'); 
             }
 
-            // DIE DISCLAIMER LOGIK: 
-            // Der Disclaimer wird strikt NUR auf dem allerersten Screen angezeigt.
             const disclaimer = document.getElementById('medical-disclaimer');
             if (disclaimer) { 
                 if (targetId === 'view-ob-1') disclaimer.classList.remove('hidden'); 
@@ -51,7 +47,6 @@ window.CPR.UI = (function() {
             }
         },
 
-        // Zentrale Navigation
         navigate: function(state, view, size) {
             if (!window.CPR.AppState) return;
             if (state) {
@@ -67,12 +62,10 @@ window.CPR.UI = (function() {
             if (hPanel) hPanel.classList.add('translate-y-full');
         },
 
-        // Ändert die Größe des Haupt-Kreises in der Mitte
         setCenterSize: function(size) {
             this.updateOrbitGeometry(size);
         },
 
-        // Blendet die Satelliten-Buttons ein/aus und STEURT DEN WRAPPER (Matroschka-Fix)
         updateOrbitGeometry: function(size) {
             const mainBtn = document.getElementById('main-btn-area');
             const sats = document.getElementById('satellites');
@@ -81,7 +74,6 @@ window.CPR.UI = (function() {
             if (!mainBtn) return;
 
             if (size === 'small') {
-                // RUNNING MODE (Timer, Satelliten, 260px)
                 mainBtn.style.width = '260px';
                 mainBtn.style.height = '260px';
                 
@@ -100,12 +92,10 @@ window.CPR.UI = (function() {
                     }, 50);
                 }
             } else {
-                // ONBOARDING / MENU MODE (Eleganter großer Kreis, 370px)
-                mainBtn.style.width = '370px';
-                mainBtn.style.height = '370px';
+                mainBtn.style.width = '350px';
+                mainBtn.style.height = '350px';
                 
                 if (wrapper) {
-                    // Verhindert das "Zusammenstauchen" des Handydisplays
                     wrapper.classList.remove('mb-[140px]', 'mt-10');
                     wrapper.classList.add('mb-0', 'mt-4');
                 }
@@ -184,6 +174,53 @@ window.CPR.UI = (function() {
             if (glowBg) glowBg.style.opacity = '0';
         },
 
+        // 🌟 CHAMELEON-GEHIRN (Smart-Button Logik nativ in UI) 🌟
+        updateSmartMedsButton: function() {
+            const btn = document.getElementById('btn-meds-menu');
+            const state = window.CPR.AppState;
+            if (!btn || !state) return;
+
+            const count = state.amioCount || 0;
+
+            // Logik: Im schockbaren Rhythmus UND max. 2 Gaben
+            if (state.isShockable && count < 2) {
+                let doseText = count === 0 ? "300 mg" : "150 mg";
+                if (state.isPediatric && state.patientWeight) {
+                    doseText = Math.round(state.patientWeight * 5) + " mg";
+                }
+
+                btn.innerHTML = `
+                    <div class="flex flex-col items-center justify-center w-full h-full pointer-events-none relative z-10">
+                        <i class="fa-solid fa-syringe text-[24px] mb-1 text-purple-500"></i>
+                        <div class="flex flex-col items-center leading-none mt-0.5 w-full px-1">
+                            <span class="text-[10px] font-bold text-purple-600 uppercase tracking-tighter">Amio.</span>
+                            <span class="text-[11px] font-black text-purple-700 uppercase tracking-tight mt-0.5">${doseText}</span>
+                        </div>
+                    </div>
+                `;
+                btn.classList.remove('bg-white', 'border-purple-100', 'text-slate-500');
+                btn.classList.add('bg-purple-50', 'border-purple-300', 'text-purple-600');
+                
+                btn.dataset.smartMode = "amio";
+                btn.dataset.amioDose = doseText;
+            } else {
+                // MODUS: STANDARD MENÜ
+                btn.innerHTML = `
+                    <div class="flex flex-col items-center justify-center w-full h-full pointer-events-none relative z-10">
+                        <i class="fa-solid fa-capsules text-[24px] mb-1 text-slate-400"></i>
+                        <div class="flex flex-col items-center leading-none mt-0.5 w-full px-1">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Meds</span>
+                            <span class="text-[11px] font-black text-purple-700 uppercase tracking-tight mt-0.5">Menü</span>
+                        </div>
+                    </div>
+                `;
+                btn.classList.remove('bg-purple-50', 'border-purple-300', 'text-purple-600');
+                btn.classList.add('bg-white', 'border-purple-100', 'text-slate-500');
+                
+                btn.dataset.smartMode = "menu";
+            }
+        },
+
         recalcMeds: function() {
             const isPedi = window.CPR.AppState && window.CPR.AppState.isPediatric;
             const kg = window.CPR.AppState ? window.CPR.AppState.patientWeight : 0;
@@ -247,18 +284,15 @@ window.CPR.UI = (function() {
 
             if (isPedi && kg) {
                 if (pediAwInfo) pediAwInfo.classList.remove('hidden');
-                
                 let activeZone = null;
                 if (window.CPR.broselowData) {
                     activeZone = window.CPR.broselowData.find(function(z) { return kg >= z.minKg && kg <= z.maxKg; });
                     if (!activeZone) activeZone = window.CPR.broselowData[window.CPR.broselowData.length - 1];
-                    
                     if (kg < 6 && kg >= 3) {
                         if (kg <= 5) activeZone = window.CPR.broselowData.find(function(z) { return z.color === 'grau'; });
                         else activeZone = window.CPR.broselowData.find(function(z) { return z.color === 'rosa'; });
                     }
                 }
-                
                 if (activeZone && activeZone.airway) {
                     const elKg = document.getElementById('airway-info-kg'); if (elKg) elKg.innerText = kg + ' kg';
                     const elTubus = document.getElementById('airway-info-tubus'); if (elTubus) elTubus.innerText = activeZone.airway.tubus;
@@ -278,10 +312,8 @@ window.CPR.UI = (function() {
                     '<button class="btn-airway-opt flex-1 bg-cyan-50 border border-cyan-200 text-cyan-700 py-3 rounded-xl font-black text-xs shadow-sm active:scale-95" data-short="LTS">LTS<br><span class="text-[8px] font-bold opacity-70">Larynxtubus</span></button>';
             }
 
-            // TRIGGER FÜR DEN SMART-MEDS BUTTON
-            if (window.CPR.MedsButton && typeof window.CPR.MedsButton.update === 'function') {
-                window.CPR.MedsButton.update();
-            }
+            // TRIGGER FÜR DEN SMART-MEDS BUTTON (Direkt intern, ohne die externe Datei!)
+            this.updateSmartMedsButton();
         }
     };
 })();
