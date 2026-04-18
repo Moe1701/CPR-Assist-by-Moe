@@ -1,5 +1,10 @@
 window.CPR = window.CPR || {};
 
+/**
+ * CPR Assist - Adrenalin Timer (Medical Grade)
+ * Zeichnet den blauen Canvas-Ring im Uhrzeigersinn und zeigt die verbleibende Zeit.
+ * Der Zähler-Badge (Anzahl Gaben) wird nun separat durch die ui.js gesteuert.
+ */
 window.CPR.AdrTimer = (function() {
     let internalInterval = null;
 
@@ -7,74 +12,66 @@ window.CPR.AdrTimer = (function() {
         const state = window.CPR.AppState;
         if (!state) return;
 
-        const maxSec = window.CPR.CONFIG ? window.CPR.CONFIG.ADR_INTERVAL : 240; // Standard: 4 Minuten (240s)
+        const maxSec = window.CPR.CONFIG ? window.CPR.CONFIG.ADR_INTERVAL : 240;
         const remaining = maxSec - (state.adrSeconds || 0);
 
         const elTime = document.getElementById('adr-timer');
         const elInner = document.getElementById('adr-inner');
-        const badge = document.getElementById('badge-adr');
         const circle = document.getElementById('adr-progress-circle');
 
         if (state.adrSeconds > 0 && remaining > 0) {
-            // Timer ist aktiv
+            // Timer ist aktiv und läuft
             if (elTime) {
                 elTime.classList.remove('hidden');
                 const m = Math.floor(remaining / 60).toString().padStart(2, '0');
                 const s = (remaining % 60).toString().padStart(2, '0');
                 elTime.innerText = m + ':' + s;
                 
-                // Kurz vor Ablauf (letzte 30s) rot färben
+                // Letzte 30 Sekunden: Alarm-Modus (Rot & Pulsierend)
+                elTime.classList.remove('text-slate-600', 'text-[#E3000F]');
                 if (remaining <= 30) {
-                    elTime.classList.replace('text-slate-600', 'text-red-500');
+                    elTime.classList.add('text-[#E3000F]', 'animate-pulse');
                 } else {
-                    elTime.classList.replace('text-red-500', 'text-slate-600');
+                    elTime.classList.add('text-slate-600');
+                    elTime.classList.remove('animate-pulse');
                 }
             }
-            if (elInner) elInner.style.opacity = '0';
-            if (badge) badge.style.opacity = '0';
             
+            // Versteckt das Spritzen-Icon in der Mitte, damit der Text perfekt lesbar ist
+            if (elInner) elInner.style.opacity = '0';
+            
+            // Zeichnet den sich füllenden Ring
             if (circle) {
                 circle.classList.remove('opacity-0');
-                const pct = Math.max(0, Math.min(1, state.adrSeconds / maxSec));
+                const pct = state.adrSeconds / maxSec; // 0.0 bis 1.0 (Füllt sich auf)
+                const ringColor = remaining <= 30 ? '#ef4444' : '#06b6d4'; // Rot (Warnung) oder Cyan
                 
-                // 🌟 ARCHITEKTUR FIX: Canvas Engine aufrufen! 🌟
                 if (window.CPR.UI && typeof window.CPR.UI.updateCircle === 'function') {
-                    let color = '#3b82f6'; // Standard Blau
-                    if (remaining <= 30) color = '#E3000F'; // Rot, wenn die Zeit knapp wird
-                    window.CPR.UI.updateCircle('adr-progress-circle', pct, color);
+                    window.CPR.UI.updateCircle('adr-progress-circle', pct, ringColor);
                 }
             }
         } else {
-            // Timer ist inaktiv / abgelaufen
+            // Timer ist inaktiv oder abgelaufen
             if (elTime) {
                 elTime.classList.add('hidden');
-                elTime.classList.replace('text-red-500', 'text-slate-600');
+                elTime.classList.remove('text-[#E3000F]', 'animate-pulse');
+                elTime.classList.add('text-slate-600');
             }
             if (elInner) elInner.style.opacity = '1';
-            if (badge) badge.style.opacity = '1';
-            
-            if (circle) {
-                circle.classList.add('opacity-0');
-                // Canvas clearen, damit beim nächsten Start kein Rest-Ring sichtbar ist
-                if (window.CPR.UI && typeof window.CPR.UI.updateCircle === 'function') {
-                     window.CPR.UI.updateCircle('adr-progress-circle', 0, '#ffffff');
-                }
-            }
+            if (circle) circle.classList.add('opacity-0');
         }
     }
 
     return {
         start: function(resume) {
-            if (!resume) {
-                window.CPR.AppState.adrSeconds = 1; // Startet bei 1, damit die UI sofort in den Timer-Modus umschaltet
-            }
+            if (!resume) window.CPR.AppState.adrSeconds = 1;
             updateUI();
 
             if (internalInterval) clearInterval(internalInterval);
             let lastTick = Date.now();
 
             internalInterval = setInterval(function() {
-                // Adrenalin-Timer pausiert ebenfalls, wenn der Einsatz z.B. auf ROSC springt
+                // Stoppt die Zeit, wenn die Reanimation pausiert ist (z.B. ROSC)
                 if (window.CPR.AppState.isRunning === false) {
                     lastTick = Date.now();
                     return;
@@ -90,15 +87,17 @@ window.CPR.AdrTimer = (function() {
                     const maxSec = window.CPR.CONFIG ? window.CPR.CONFIG.ADR_INTERVAL : 240;
                     
                     if (window.CPR.AppState.adrSeconds >= maxSec) {
-                        // Timer abgelaufen!
                         window.CPR.AppState.adrSeconds = 0;
                         clearInterval(internalInterval);
                         internalInterval = null;
                         updateUI();
                         
-                        // Vibrations-Alarm für abgelaufenes Adrenalin
+                        // Vibrations- und Sound-Alarm für abgelaufenes Adrenalin
                         if (window.CPR.Utils && window.CPR.Utils.vibrate) {
                             window.CPR.Utils.vibrate([200, 100, 200, 100, 200]);
+                        }
+                        if (window.CPR.Audio && window.CPR.Audio.playAlert) {
+                            window.CPR.Audio.playAlert();
                         }
                     } else {
                         updateUI();
