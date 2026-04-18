@@ -2,7 +2,8 @@
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - Timer und CCF pausieren exakt während der Rhythmusanalyse.
  * - Alle Timer nutzen Date.now() Deltas.
- * - SMART MEDS: Chamäleon-Logik direkt im Hauptsystem (Cache-sicher).
+ * - FIX: Anti-Bounce (Ghost Click) auf smoothe 150ms optimiert.
+ * - SMART MEDS: Chamäleon-Logik direkt im Hauptsystem integriert.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -15,7 +16,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (UI && typeof UI.setCenterSize === 'function' && size) { UI.setCenterSize(size); }
     }
 
-    function addClick(id, handler) { const el = document.getElementById(id); if (el) el.addEventListener('click', handler); }
+    // 🌟 OPTIMIERTE ANTI-BOUNCE KLICK-LOGIK (Verhindert Screen-Skipping) 🌟
+    function addClick(id, handler) { 
+        const el = document.getElementById(id); 
+        if (el) {
+            el.addEventListener('click', (e) => {
+                // Blockiert Klicks für 150ms nach einem Screen-Wechsel
+                if (window.CPR.Globals && Date.now() - (window.CPR.Globals.lastViewSwitch || 0) < 150) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
+                handler(e);
+            });
+        }
+    }
+    
     function markMenuAction() { Globals.lastMenuAction = Date.now(); }
 
     // --- NOTFALL-RESET ---
@@ -608,7 +624,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); 
             if (UI && typeof UI.updateAdrenalinBadge === 'function') UI.updateAdrenalinBadge();
             
-            // FIX: Aufruf der Smart Meds Logik nach dem Laden der Session!
+            // Logik-Update
             if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
 
             if (AppState.shockCount) {
@@ -688,13 +704,8 @@ document.addEventListener('DOMContentLoaded', function() {
     window.CPR.updateCprUI = updateCprUI;
     window.CPR.startRoscTimer = startRoscTimer;
 
-    // INITIALISIERUNG
-    if (UI && typeof UI.switchView === 'function') {
-        UI.switchView('view-ob-1');
-    }
-    if (UI && typeof UI.setCenterSize === 'function') {
-        UI.setCenterSize('large'); 
-    }
+    if (UI && typeof UI.switchView === 'function') { UI.switchView('view-ob-1'); }
+    if (UI && typeof UI.setCenterSize === 'function') { UI.setCenterSize('large'); }
 
     setTimeout(() => {
         if (loadSession()) {
