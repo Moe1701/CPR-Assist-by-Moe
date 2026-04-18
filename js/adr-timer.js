@@ -2,7 +2,8 @@ window.CPR = window.CPR || {};
 
 /**
  * CPR Assist - Adrenalin Timer (Medical Grade)
- * FIX: Erzwingt Sichtbarkeit gegen CSS-Blockaden & bringt den ROTEN Canvas-Ring zurück!
+ * FIX: Erzwingt Sichtbarkeit gegen CSS-Blockaden & bringt den ROTEN Canvas-Ring 
+ * sowie den 04:00 Countdown zurück!
  */
 window.CPR.AdrTimer = (function() {
     let internalInterval = null;
@@ -25,9 +26,10 @@ window.CPR.AdrTimer = (function() {
                 // ==========================================
                 
                 if (elTime) {
-                    // Holzhammer-Methode: Zwingt den Timer auf sichtbar (überschreibt CSS)
-                    elTime.classList.remove('hidden');
-                    elTime.style.display = 'flex'; 
+                    // Holzhammer 1: Verstecken-Klassen vernichten & Sichtbarkeit per Inline-Style erzwingen
+                    elTime.classList.remove('hidden', 'bg-white/80', 'backdrop-blur-[1px]');
+                    elTime.style.setProperty('display', 'flex', 'important');
+                    elTime.style.setProperty('text-shadow', '0px 0px 4px rgba(255,255,255,0.8)', 'important');
                     
                     const m = Math.floor(remaining / 60).toString().padStart(2, '0');
                     const s = (remaining % 60).toString().padStart(2, '0');
@@ -36,23 +38,26 @@ window.CPR.AdrTimer = (function() {
                     // Letzte 30 Sekunden: Alarm-Modus (Rot & Pulsierend)
                     elTime.classList.remove('text-slate-600', 'text-[#E3000F]', 'text-red-600');
                     if (remaining <= 30) {
-                        elTime.classList.add('text-red-600', 'animate-pulse');
+                        elTime.classList.add('text-[#E3000F]', 'animate-pulse');
                     } else {
-                        elTime.classList.add('text-slate-600');
+                        elTime.classList.add('text-slate-700');
                         elTime.classList.remove('animate-pulse');
                     }
                 }
                 
-                // Versteckt das Spritzen-Icon in der Mitte
-                if (elInner) elInner.style.opacity = '0';
+                // Holzhammer 2: Spritzen-Icon in der Mitte zwingend unsichtbar machen
+                if (elInner) {
+                    elInner.style.setProperty('opacity', '0', 'important');
+                }
                 
-                // Zeichnet den sich füllenden ROTEN Ring
+                // Holzhammer 3: Roten Ring zeichnen und Z-Index GANZ nach vorne holen
                 if (circle) {
                     circle.classList.remove('opacity-0');
-                    circle.style.opacity = '1'; // Erzwingt Sichtbarkeit
+                    circle.style.setProperty('opacity', '1', 'important');
+                    circle.style.setProperty('z-index', '25', 'important');
                     
                     const pct = state.adrSeconds / maxSec; // 0.0 bis 1.0
-                    const ringColor = '#E3000F'; // IMMER ROT, wie gewünscht!
+                    const ringColor = '#E3000F'; // IMMER ROT!
                     
                     if (window.CPR.UI && typeof window.CPR.UI.updateCircle === 'function') {
                         window.CPR.UI.updateCircle('adr-progress-circle', pct, ringColor);
@@ -63,17 +68,16 @@ window.CPR.AdrTimer = (function() {
                 // TIMER INAKTIV / ABGELAUFEN
                 // ==========================================
                 if (elTime) {
-                    elTime.classList.add('hidden');
-                    elTime.style.display = 'none'; // Versteckt den Text
-                    elTime.classList.remove('text-[#E3000F]', 'text-red-600', 'animate-pulse');
-                    elTime.classList.add('text-slate-600');
+                    elTime.style.setProperty('display', 'none', 'important');
+                    elTime.classList.remove('animate-pulse');
                 }
                 
-                if (elInner) elInner.style.opacity = '1'; // Spritze wieder da
+                if (elInner) {
+                    elInner.style.setProperty('opacity', '1', 'important'); // Spritze wieder da
+                }
                 
                 if (circle) {
-                    circle.classList.add('opacity-0');
-                    circle.style.opacity = '0';
+                    circle.style.setProperty('opacity', '0', 'important');
                 }
             }
         } catch(e) {
