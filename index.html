@@ -106,20 +106,22 @@
                 
                 <div id="satellites" class="contents hidden">
                     
-                    <!-- 🌟 ADRENALIN BUTTON (Mit Ring & Count-Badge) 🌟 -->
-                    <button id="btn-adrenalin" class="satellite-btn pointer-events-auto bg-white border-2 border-red-100 rounded-full shadow-lg text-slate-500" data-dose="1 mg">
-                        <canvas id="adr-progress-circle" width="100" height="100" class="absolute inset-0 w-full h-full pointer-events-none opacity-0 transition-opacity duration-300" style="transform: rotate(-90deg);"></canvas>
-                        
-                        <div id="adr-inner" class="flex flex-col items-center justify-center w-full h-full transition-opacity duration-300 pointer-events-none relative z-10">
+                    <!-- 🌟 ADRENALIN BUTTON (Chirurgisch sauberes Z-Index Layering) 🌟 -->
+                    <button id="btn-adrenalin" class="satellite-btn pointer-events-auto bg-white border-2 border-red-100 rounded-full shadow-lg text-slate-500 relative overflow-hidden" data-dose="1 mg">
+                        <!-- Layer 1: Icon & Text -->
+                        <div id="adr-inner" class="flex flex-col items-center justify-center w-full h-full transition-opacity duration-300 pointer-events-none absolute inset-0 z-10 opacity-100">
                             <i id="adr-icon" class="fa-solid fa-syringe text-[24px] mb-0.5 text-slate-400 transition-colors"></i>
                             <span id="adr-text-2" class="text-[12px] font-extrabold tracking-wide mt-1 text-slate-700 leading-tight whitespace-nowrap">1 mg</span>
                         </div>
                         
-                        <!-- Der neue kompakte Zähler-Badge (Anzahl Gaben) -->
-                        <span id="adr-count-badge" class="hidden absolute -top-2 -right-2 bg-[#E3000F] text-white text-[12px] font-black px-2 min-w-[26px] h-7 flex items-center justify-center rounded-full shadow-md border-2 border-white z-30 transition-colors"></span>
+                        <!-- Layer 2: Der rote Canvas Ring (Liegt ÜBER dem Icon) -->
+                        <canvas id="adr-progress-circle" width="100" height="100" class="absolute inset-0 w-full h-full pointer-events-none opacity-0 transition-opacity duration-300 z-20" style="transform: rotate(-90deg);"></canvas>
                         
-                        <!-- Countdown in der Mitte (erscheint, wenn Timer läuft) -->
-                        <span id="adr-timer" class="absolute inset-0 flex items-center justify-center text-xl font-black hidden text-slate-600 tracking-tighter pointer-events-none z-20 bg-white/80 backdrop-blur-[1px] rounded-full transition-colors duration-300">04:00</span>
+                        <!-- Layer 3: Countdown Text (Ohne störende Hintergrundfarbe, mit Shadow) -->
+                        <span id="adr-timer" class="absolute inset-0 items-center justify-center text-xl font-black hidden text-slate-700 tracking-tighter pointer-events-none z-30 transition-colors duration-300 drop-shadow-md">04:00</span>
+                        
+                        <!-- Layer 4: Gaben-Zähler (Ganz oben auf dem Rand) -->
+                        <span id="adr-count-badge" class="hidden absolute -top-2 -right-2 bg-[#E3000F] text-white text-[12px] font-black px-2 min-w-[26px] h-7 items-center justify-center rounded-full shadow-md border-2 border-white z-40 transition-colors"></span>
                     </button>
                     
                     <button id="btn-meds-menu" class="satellite-btn pointer-events-auto opacity-0 bg-white border-2 border-purple-100 rounded-full shadow-lg text-slate-500">
@@ -649,20 +651,20 @@
     </div>
     
     <!-- 🌟 MODULARER APP-AUFBAU 🌟 -->
-    <script src="js/config.js?v=56"></script>
-    <script src="js/utils.js?v=56"></script>
-    <script src="js/audio.js?v=56"></script>
-    <script src="js/export.js?v=56"></script> 
-    <script src="js/settings.js?v=56"></script>
-    <script src="js/checklists.js?v=56"></script>
-    <script src="js/ui.js?v=56"></script>
-    <script src="js/app.js?v=56"></script>
-    <script src="js/airway-timer.js?v=56"></script>
-    <script src="js/adr-timer.js?v=56"></script> 
-    <script src="js/cpr-timer.js?v=56"></script> 
-    <script src="js/help-overlay.js?v=56"></script>
-    <script src="js/debriefing.js?v=56"></script>
-    <script src="js/log-timeline.js?v=56"></script>
+    <script src="js/config.js?v=57"></script>
+    <script src="js/utils.js?v=57"></script>
+    <script src="js/audio.js?v=57"></script>
+    <script src="js/export.js?v=57"></script> 
+    <script src="js/settings.js?v=57"></script>
+    <script src="js/checklists.js?v=57"></script>
+    <script src="js/ui.js?v=57"></script>
+    <script src="js/app.js?v=57"></script>
+    <script src="js/airway-timer.js?v=57"></script>
+    <script src="js/adr-timer.js?v=57"></script> 
+    <script src="js/cpr-timer.js?v=57"></script> 
+    <script src="js/help-overlay.js?v=57"></script>
+    <script src="js/debriefing.js?v=57"></script>
+    <script src="js/log-timeline.js?v=57"></script>
 
 </body>
 </html>
