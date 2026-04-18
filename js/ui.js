@@ -37,10 +37,11 @@ window.CPR.UI = (function() {
                 }
             }
             
-            const svgCircle = document.getElementById('svg-circle');
-            if (svgCircle) { 
-                if (targetId === 'view-timer') svgCircle.classList.remove('opacity-0'); 
-                else svgCircle.classList.add('opacity-0'); 
+            // FIX: Sichtbarkeit des neuen Canvas-Kreises (statt des alten SVG)
+            const progCircle = document.getElementById('progress-circle');
+            if (progCircle) { 
+                if (targetId === 'view-timer') progCircle.classList.remove('opacity-0'); 
+                else progCircle.classList.add('opacity-0'); 
             }
 
             const disclaimer = document.getElementById('medical-disclaimer');
@@ -97,7 +98,7 @@ window.CPR.UI = (function() {
                             b.classList.remove('opacity-0', 'pointer-events-none');
                         });
                         
-                        // FIX: Atemweg und CPR wieder einblenden, wenn wir im Timer sind
+                        // Atemweg und CPR wieder einblenden
                         if (btnAirway) btnAirway.classList.remove('opacity-0', 'pointer-events-none');
                         if (btnCpr) btnCpr.classList.remove('opacity-0', 'pointer-events-none');
                     }, 50);
@@ -111,7 +112,7 @@ window.CPR.UI = (function() {
                     wrapper.classList.add('mb-0', 'mt-4');
                 }
 
-                // FIX: Atemweg und CPR sofort ausblenden, damit sie den großen Kreis nicht überlagern!
+                // Atemweg und CPR ausblenden
                 if (btnAirway) btnAirway.classList.add('opacity-0', 'pointer-events-none');
                 if (btnCpr) btnCpr.classList.add('opacity-0', 'pointer-events-none');
 
@@ -327,6 +328,38 @@ window.CPR.UI = (function() {
             }
 
             this.updateSmartMedsButton();
+        },
+
+        // 🌟 MISSING LINK FIX: Die gelöschte Funktion zum Zeichnen der Canvas-Kreise! 🌟
+        updateCircle: function(canvasId, pct, color) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const center = w / 2;
+            const r = center - 6; // 6px Padding zum Rand
+
+            // Alten Frame löschen
+            ctx.clearRect(0, 0, w, h);
+            
+            // Hintergrund-Ring zeichnen
+            ctx.beginPath();
+            ctx.arc(center, center, r, 0, 2 * Math.PI);
+            ctx.strokeStyle = canvasId === 'progress-circle' ? '#f1f5f9' : '#fef2f2';
+            ctx.lineWidth = canvasId === 'progress-circle' ? 12 : 6;
+            ctx.stroke();
+
+            // Fortschritt-Ring zeichnen
+            if (pct > 0) {
+                ctx.beginPath();
+                ctx.arc(center, center, r, 0, 2 * Math.PI * pct);
+                ctx.strokeStyle = color || '#E3000F';
+                ctx.lineWidth = canvasId === 'progress-circle' ? 12 : 6;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
         }
     };
 })();
