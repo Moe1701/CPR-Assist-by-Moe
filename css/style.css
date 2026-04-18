@@ -13,7 +13,6 @@ body {
 }
 
 .no-select { 
-    /* Verhindert, dass Text versehentlich markiert wird */
     user-select: none; 
     -webkit-user-select: none; 
 }
@@ -27,67 +26,71 @@ body {
 
 /* ==========================================
    3. KREIS-MENÜ (Orbit & Satelliten) 
-   -> DEINE ORIGINAL MATHEMATIK IST WIEDER DA!
    ========================================== */
-.orbit-path { 
-    position: absolute; top: 50%; left: 50%; 
-    transform: translate(-50%, -50%); 
-    border: 2px dashed #e2e8f0; 
-    border-radius: 50%; z-index: 10; pointer-events: none; 
-}
-
 .satellite-btn { 
-    width: 68px !important; height: 68px !important; margin: 0 !important; 
-    display: flex !important; flex-direction: column !important; 
-    align-items: center !important; justify-content: center !important; 
-    z-index: 50; transition: opacity 0.3s ease, visibility 0.3s ease !important; 
+    width: 90px !important; 
+    height: 90px !important; 
+    margin: 0 !important; 
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    display: flex !important; 
+    flex-direction: column !important; 
+    align-items: center !important; 
+    justify-content: center !important; 
+    z-index: 45 !important; 
+    transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.1s ease, filter 0.1s ease !important; 
 }
 
 .satellite-btn.hidden { 
-    visibility: hidden !important; opacity: 0 !important; 
-    pointer-events: none !important; display: flex !important; 
+    visibility: hidden !important; 
+    opacity: 0 !important; 
+    pointer-events: none !important; 
+    display: flex !important; 
 }
 
-/* Die 6 kleinen Satelliten auf ihrer festen Umlaufbahn */
-#btn-adrenalin { position: absolute !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) rotate(270deg) translate(135px) rotate(-270deg) !important; }
-#btn-meds-menu { position: absolute !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) rotate(330deg) translate(135px) rotate(-330deg) !important; }
-#btn-toggle-hits { position: absolute !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) rotate(30deg) translate(135px) rotate(-30deg) !important; }
-#btn-rosc-end { position: absolute !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) rotate(90deg) translate(135px) rotate(-90deg) !important; }
-#btn-toggle-protocol { position: absolute !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) rotate(150deg) translate(135px) rotate(-150deg) !important; }
-#btn-zugang-menu { position: absolute !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) rotate(210deg) translate(135px) rotate(-210deg) !important; }
+/* Die 6 kleinen Satelliten (Exakte 175px Umlaufbahn, zentriert durch translate -50%) */
+#btn-adrenalin { transform: translate(-50%, -50%) rotate(-90deg) translate(175px) rotate(90deg) !important; }
+#btn-meds-menu { transform: translate(-50%, -50%) rotate(-45deg) translate(175px) rotate(45deg) !important; }
+#btn-toggle-protocol { transform: translate(-50%, -50%) rotate(45deg) translate(175px) rotate(-45deg) !important; }
+#btn-rosc-end { transform: translate(-50%, -50%) rotate(90deg) translate(175px) rotate(-90deg) !important; }
+#btn-toggle-hits { transform: translate(-50%, -50%) rotate(135deg) translate(175px) rotate(-135deg) !important; }
+#btn-zugang-menu { transform: translate(-50%, -50%) rotate(225deg) translate(175px) rotate(-225deg) !important; }
 
 /* Die beiden großen Haupt-Satelliten (Atemweg & CPR) */
 #btn-airway, #btn-cpr { 
-    position: absolute !important; top: 50% !important; left: 50% !important; 
-    width: 96px !important; height: 96px !important; 
-    border-radius: 9999px !important; z-index: 60 !important; 
-    transition: transform 0.1s ease, opacity 0.8s ease-out !important; 
+    position: absolute !important; 
+    top: 50% !important; 
+    left: 50% !important; 
+    width: 100px !important; 
+    height: 100px !important; 
+    margin: 0 !important; 
+    border-radius: 9999px !important; 
+    z-index: 50 !important; 
+    transition: transform 0.1s ease, opacity 0.8s ease-out, filter 0.1s ease !important; 
 }
-#btn-airway { transform: translate(calc(-50% - 100px), calc(-50% + 210px)) !important; }
-#btn-cpr { transform: translate(calc(-50% + 100px), calc(-50% + 210px)) !important; }
+#btn-airway { transform: translate(calc(-50% - 115px), calc(-50% + 230px)) !important; }
+#btn-cpr { transform: translate(calc(-50% + 115px), calc(-50% + 230px)) !important; }
 
-/* Klick-Effekte (verkleinern ohne die Translation zu zerstören) */
-#btn-adrenalin:active { transform: translate(-50%, -50%) rotate(270deg) translate(135px) rotate(-270deg) scale(0.95) !important; }
-#btn-meds-menu:active { transform: translate(-50%, -50%) rotate(330deg) translate(135px) rotate(-330deg) scale(0.95) !important; }
-#btn-toggle-hits:active { transform: translate(-50%, -50%) rotate(30deg) translate(135px) rotate(-30deg) scale(0.95) !important; }
-#btn-rosc-end:active { transform: translate(-50%, -50%) rotate(90deg) translate(135px) rotate(-90deg) scale(0.95) !important; }
-#btn-toggle-protocol:active { transform: translate(-50%, -50%) rotate(150deg) translate(135px) rotate(-150deg) scale(0.95) !important; }
-#btn-zugang-menu:active { transform: translate(-50%, -50%) rotate(210deg) translate(135px) rotate(-210deg) scale(0.95) !important; }
-#btn-airway:active { transform: translate(calc(-50% - 100px), calc(-50% + 210px)) scale(0.95) !important; }
-#btn-cpr:active { transform: translate(calc(-50% + 100px), calc(-50% + 210px)) scale(0.95) !important; }
+/* Klick-Effekte (Verkleinern ohne die Matrix zu zerstören) */
+#btn-adrenalin:active { transform: translate(-50%, -50%) rotate(-90deg) translate(175px) rotate(90deg) scale(0.95) !important; filter: brightness(0.9); }
+#btn-meds-menu:active { transform: translate(-50%, -50%) rotate(-45deg) translate(175px) rotate(45deg) scale(0.95) !important; filter: brightness(0.9); }
+#btn-toggle-protocol:active { transform: translate(-50%, -50%) rotate(45deg) translate(175px) rotate(-45deg) scale(0.95) !important; filter: brightness(0.9); }
+#btn-rosc-end:active { transform: translate(-50%, -50%) rotate(90deg) translate(175px) rotate(-90deg) scale(0.95) !important; filter: brightness(0.9); }
+#btn-toggle-hits:active { transform: translate(-50%, -50%) rotate(135deg) translate(175px) rotate(-135deg) scale(0.95) !important; filter: brightness(0.9); }
+#btn-zugang-menu:active { transform: translate(-50%, -50%) rotate(225deg) translate(175px) rotate(-225deg) scale(0.95) !important; filter: brightness(0.9); }
+#btn-airway:active { transform: translate(calc(-50% - 115px), calc(-50% + 230px)) scale(0.95) !important; filter: brightness(0.9); }
+#btn-cpr:active { transform: translate(calc(-50% + 115px), calc(-50% + 230px)) scale(0.95) !important; filter: brightness(0.9); }
 
 /* ==========================================
    4. ANIMATIONEN (Sicher für das Layout)
    ========================================== */
-
-/* Pausen-Warnung (Wenn CPR länger unterbrochen wird) */
 .pause-warning {
     background-color: #fef2f2 !important;
     border-color: #ef4444 !important;
     animation: borderPulseFast 1s infinite;
 }
 
-/* Roter Rand wenn Timer abgelaufen ist */
 .timer-ended {
     animation: borderPulse 1s infinite;
 }
@@ -102,7 +105,6 @@ body {
     50% { border-color: #fca5a5; box-shadow: 0 0 5px rgba(239, 68, 68, 0.1); }
 }
 
-/* CPR Warnung kurz vor Schluss */
 .animate-cpr-warn { 
     animation: cprWarn 0.5s ease-out; 
     border-color: #ef4444 !important; 
