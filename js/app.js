@@ -1,7 +1,7 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - Timer und CCF pausieren exakt während der Rhythmusanalyse.
- * - Alle Timer nutzen Date.now() Deltas.
+ * - FIX: Gesamter Hauptkreis startet nun zuverlässig den 2-Minuten Timer.
  * - FIX: Anti-Bounce (Ghost Click) auf smoothe 150ms optimiert.
  * - SMART MEDS: Chamäleon-Logik direkt im Hauptsystem integriert.
  */
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const el = document.getElementById(id); 
         if (el) {
             el.addEventListener('click', (e) => {
-                // Blockiert Klicks für 150ms nach einem Screen-Wechsel
+                // Blockiert Klicks für 150ms nach einem Screen-Wechsel, um Ghost-Clicks zu verhindern
                 if (window.CPR.Globals && Date.now() - (window.CPR.Globals.lastViewSwitch || 0) < 150) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -394,11 +394,25 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-breaths-done', (e) => { e.stopPropagation(); Utils.vibrate(40); addLogEntry("5 initiale Beatmungen durchgeführt"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
         addClick('btn-breaths-skipped', (e) => { e.stopPropagation(); Utils.vibrate([30, 50]); addLogEntry("5 initiale Beatmungen übersprungen"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
 
+        // 🌟 HAUPTBUTTON FIX: Macht den kompletten Kreis anklickbar für den Start des Timers! 🌟
         addClick('main-btn-area', (e) => {
             if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
             if (Date.now() - (Globals.lastMenuAction || 0) < 500) return;
-            if (AppState.state === 'OB_COMPRESSIONS') { Utils.vibrate(50); navHelper('OB_ANALYZE', 'view-ob-3', 'large'); }
-            else if (AppState.state === 'OB_ANALYZE') { Utils.vibrate(50); navHelper('DECISION', 'view-decision', 'large'); }
+            
+            if (AppState.state === 'OB_COMPRESSIONS') { 
+                Utils.vibrate(50); navHelper('OB_ANALYZE', 'view-ob-3', 'large'); 
+            } else if (AppState.state === 'OB_ANALYZE') { 
+                Utils.vibrate(50); navHelper('DECISION', 'view-decision', 'large'); 
+            } else if (AppState.state === 'WAITING_CPR_RESUME') {
+                // NEU: Falls der Nutzer knapp neben den "Bestätigen" Button klickt,
+                // wertet die App den großen Kreis nun trotzdem als Klick und startet den Timer!
+                Utils.vibrate([40, 40]);
+                AppState.isCompressing = true;
+                addLogEntry("Kompression FORTGESETZT");
+                activateDashboard(true);
+                updateCprUI();
+                Utils.saveSession();
+            }
         });
 
         addClick('btn-decision-cancel', (e) => {
@@ -413,12 +427,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (CPR.CPRTimer && typeof CPR.CPRTimer.pause === 'function') CPR.CPRTimer.pause(); updateCprUI(); 
         });
 
-        // TRIGGERS FÜR DEN SMART-MEDS BUTTON
         addClick('btn-shockable', (e) => { 
             e.stopPropagation(); Utils.vibrate(40); AppState.isShockable = true; 
             if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
             addLogEntry("Schockbar"); navHelper('JOULE', 'view-joule', 'large'); 
         });
+        
         addClick('btn-non-shockable', (e) => { 
             e.stopPropagation(); Utils.vibrate(40); AppState.isShockable = false; 
             if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
@@ -436,7 +450,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target.id === 'btn-joule-cancel') { e.stopPropagation(); markMenuAction(); navHelper('DECISION', 'view-decision', 'large'); }
         });
 
-        addClick('btn-confirm-resume', (e) => { e.stopPropagation(); Utils.vibrate([40, 40]); AppState.isCompressing = true; addLogEntry("Kompression FORTGESETZT"); activateDashboard(true); updateCprUI(); Utils.saveSession(); });
+        // Dieser Button bleibt sicherheitshalber zusätzlich aktiv
+        addClick('btn-confirm-resume', (e) => { 
+            e.stopPropagation(); Utils.vibrate([40, 40]); AppState.isCompressing = true; addLogEntry("Kompression FORTGESETZT"); activateDashboard(true); updateCprUI(); Utils.saveSession(); 
+        });
 
         addClick('btn-cpr', (e) => { 
             e.stopPropagation(); if (AppState.state === 'IDLE' || AppState.state === 'END') return; 
@@ -453,12 +470,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (CPR.AdrTimer && typeof CPR.AdrTimer.start === 'function') CPR.AdrTimer.start(); Utils.saveSession();
         });
 
-        // 🌟 DIE DIREKTE KLICK-LOGIK FÜR DEN NEUEN SMART-BUTTON 🌟
         addClick('btn-meds-menu', (e) => {
             e.stopPropagation(); markMenuAction();
             const btn = e.currentTarget;
             if (btn.dataset.smartMode === "amio") {
-                // MODUS: DIREKT-GABE
                 Utils.vibrate(50);
                 const doseStr = btn.dataset.amioDose || "Amiodaron";
                 AppState.amioCount = (AppState.amioCount || 0) + 1;
@@ -466,7 +481,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
                 Utils.saveSession();
             } else {
-                // MODUS: STANDARD-MENÜ
                 navHelper('MEDS_MENU', 'view-meds-menu', 'large');
             }
         });
@@ -480,7 +494,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isOpt) { 
                     const logText = isOpt.dataset.log || isOpt.innerText.replace('\n', ' ').trim(); 
                     addLogEntry(`${logText} gegeben`); 
-                    // Wenn Amiodaron doch mal manuell via Menü gegeben wird, zählen wir brav mit
                     if (logText.includes('Amiodaron') || logText.includes('Amio')) {
                         AppState.amioCount = (AppState.amioCount || 0) + 1;
                         if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
@@ -624,7 +637,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); 
             if (UI && typeof UI.updateAdrenalinBadge === 'function') UI.updateAdrenalinBadge();
             
-            // Logik-Update
             if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
 
             if (AppState.shockCount) {
