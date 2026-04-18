@@ -37,7 +37,7 @@ window.CPR.UI = (function() {
                 }
             }
             
-            // Sichtbarkeit des neuen Canvas-Kreises (statt altem SVG)
+            // Sichtbarkeit des neuen Canvas-Kreises
             const progCircle = document.getElementById('progress-circle');
             if (progCircle) { 
                 if (targetId === 'view-timer') progCircle.classList.remove('opacity-0'); 
@@ -90,7 +90,7 @@ window.CPR.UI = (function() {
                     wrapper.classList.add('mb-[140px]', 'mt-10');
                 }
 
-                // FIX: Atemweg und CPR flüssig einblenden, wenn der Mittelkreis klein wird
+                // Atemweg und CPR flüssig einblenden
                 if (btnAirway) btnAirway.classList.remove('opacity-0', 'pointer-events-none');
                 if (btnCpr) btnCpr.classList.remove('opacity-0', 'pointer-events-none');
 
@@ -112,7 +112,7 @@ window.CPR.UI = (function() {
                     wrapper.classList.add('mb-0', 'mt-4');
                 }
 
-                // FIX: Atemweg und CPR sofort ausblenden, damit sie den großen Kreis nicht überlagern!
+                // Atemweg und CPR ausblenden, damit sie den großen Kreis nicht überlagern
                 if (btnAirway) btnAirway.classList.add('opacity-0', 'pointer-events-none');
                 if (btnCpr) btnCpr.classList.add('opacity-0', 'pointer-events-none');
 
@@ -171,15 +171,29 @@ window.CPR.UI = (function() {
             }
         },
 
+        // 🌟 FIX: Zielt exakt auf den neuen, kleinen runden Zähler-Badge am Button-Rand! 🌟
         updateAdrenalinBadge: function() {
-            const badge = document.getElementById('badge-adr');
-            if (!badge) return;
+            const newBadge = document.getElementById('adr-count-badge');
+            const oldBadge = document.getElementById('badge-adr'); // Fallback
+            
             const count = window.CPR.AppState ? (window.CPR.AppState.adrCount || 0) : 0;
-            if (count > 0) {
-                badge.classList.remove('hidden');
-                badge.innerText = 'Gesamt: ' + count;
-            } else {
-                badge.classList.add('hidden');
+            
+            if (newBadge) {
+                if (count > 0) {
+                    newBadge.classList.remove('hidden');
+                    newBadge.innerText = count;
+                } else {
+                    newBadge.classList.add('hidden');
+                }
+            } else if (oldBadge) {
+                // Fallback falls index.html noch nicht aktualisiert wurde
+                if (count > 0) {
+                    oldBadge.classList.remove('hidden');
+                    oldBadge.innerText = count;
+                    oldBadge.className = 'absolute -top-2 -right-2 bg-[#E3000F] text-white text-[12px] font-black px-2 min-w-[26px] h-7 flex items-center justify-center rounded-full shadow-md border-2 border-white z-30 transition-colors';
+                } else {
+                    oldBadge.classList.add('hidden');
+                }
             }
         },
 
@@ -190,7 +204,7 @@ window.CPR.UI = (function() {
             if (glowBg) glowBg.style.opacity = '0';
         },
 
-        // 🌟 CHAMELEON-GEHIRN (Smart-Button Logik nativ verankert) 🌟
+        // 🌟 CHAMELEON-GEHIRN (Smart-Button Logik) 🌟
         updateSmartMedsButton: function() {
             const btn = document.getElementById('btn-meds-menu');
             const state = window.CPR.AppState;
@@ -330,7 +344,7 @@ window.CPR.UI = (function() {
             this.updateSmartMedsButton();
         },
 
-        // 🌟 DIE MISSING LINK CANVAS-ENGINE (Adrenalin- & Timer-Ringe) 🌟
+        // 🌟 DIE CANVAS-ENGINE FÜR ALLE PROGRESS-RINGE (Adrenalin & CPR) 🌟
         updateCircle: function(canvasId, pct, color) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
