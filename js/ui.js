@@ -2,9 +2,7 @@ window.CPR = window.CPR || {};
 
 window.CPR.UI = (function() {
     return {
-        // Schaltet zwischen den verschiedenen Menü-Ansichten im Zentrum um
         switchView: function(viewId) {
-            // Anti-Bounce Zeitstempel setzen (sperrt Ghost-Clicks für 150ms beim Screen-Wechsel)
             if (window.CPR.Globals) window.CPR.Globals.lastViewSwitch = Date.now();
             
             const allViews = [
@@ -37,7 +35,6 @@ window.CPR.UI = (function() {
                 }
             }
             
-            // Sichtbarkeit des neuen Canvas-Kreises
             const progCircle = document.getElementById('progress-circle');
             if (progCircle) { 
                 if (targetId === 'view-timer') progCircle.classList.remove('opacity-0'); 
@@ -74,8 +71,6 @@ window.CPR.UI = (function() {
             const mainBtn = document.getElementById('main-btn-area');
             const sats = document.getElementById('satellites');
             const wrapper = document.getElementById('orbit-wrapper');
-            
-            // Die beiden großen Haupt-Buttons
             const btnAirway = document.getElementById('btn-airway');
             const btnCpr = document.getElementById('btn-cpr');
             
@@ -90,7 +85,6 @@ window.CPR.UI = (function() {
                     wrapper.classList.add('mb-[140px]', 'mt-10');
                 }
 
-                // Atemweg und CPR flüssig einblenden
                 if (btnAirway) btnAirway.classList.remove('opacity-0', 'pointer-events-none');
                 if (btnCpr) btnCpr.classList.remove('opacity-0', 'pointer-events-none');
 
@@ -112,7 +106,6 @@ window.CPR.UI = (function() {
                     wrapper.classList.add('mb-0', 'mt-4');
                 }
 
-                // Atemweg und CPR ausblenden, damit sie den großen Kreis nicht überlagern
                 if (btnAirway) btnAirway.classList.add('opacity-0', 'pointer-events-none');
                 if (btnCpr) btnCpr.classList.add('opacity-0', 'pointer-events-none');
 
@@ -171,29 +164,18 @@ window.CPR.UI = (function() {
             }
         },
 
-        // 🌟 FIX: Zielt exakt auf den neuen, kleinen runden Zähler-Badge am Button-Rand! 🌟
+        // 🌟 CHIRURGISCHER SCHNITT: Native DOM-Steuerung für 100% Sichtbarkeit 🌟
         updateAdrenalinBadge: function() {
-            const newBadge = document.getElementById('adr-count-badge');
-            const oldBadge = document.getElementById('badge-adr'); // Fallback
+            const badge = document.getElementById('adr-count-badge');
+            if (!badge) return;
             
             const count = window.CPR.AppState ? (window.CPR.AppState.adrCount || 0) : 0;
             
-            if (newBadge) {
-                if (count > 0) {
-                    newBadge.classList.remove('hidden');
-                    newBadge.innerText = count;
-                } else {
-                    newBadge.classList.add('hidden');
-                }
-            } else if (oldBadge) {
-                // Fallback falls index.html noch nicht aktualisiert wurde
-                if (count > 0) {
-                    oldBadge.classList.remove('hidden');
-                    oldBadge.innerText = count;
-                    oldBadge.className = 'absolute -top-2 -right-2 bg-[#E3000F] text-white text-[12px] font-black px-2 min-w-[26px] h-7 flex items-center justify-center rounded-full shadow-md border-2 border-white z-30 transition-colors';
-                } else {
-                    oldBadge.classList.add('hidden');
-                }
+            if (count > 0) {
+                badge.style.display = 'flex'; // Unangreifbar gegen CSS
+                badge.innerText = count; 
+            } else {
+                badge.style.display = 'none';
             }
         },
 
@@ -204,7 +186,6 @@ window.CPR.UI = (function() {
             if (glowBg) glowBg.style.opacity = '0';
         },
 
-        // 🌟 CHAMELEON-GEHIRN (Smart-Button Logik) 🌟
         updateSmartMedsButton: function() {
             const btn = document.getElementById('btn-meds-menu');
             const state = window.CPR.AppState;
@@ -233,7 +214,6 @@ window.CPR.UI = (function() {
                 btn.dataset.smartMode = "amio";
                 btn.dataset.amioDose = doseText;
             } else {
-                // MODUS: STANDARD MENÜ
                 btn.innerHTML = `
                     <div class="flex flex-col items-center justify-center w-full h-full pointer-events-none relative z-10">
                         <i class="fa-solid fa-capsules text-[24px] mb-1 text-slate-400"></i>
@@ -344,7 +324,6 @@ window.CPR.UI = (function() {
             this.updateSmartMedsButton();
         },
 
-        // 🌟 DIE CANVAS-ENGINE FÜR ALLE PROGRESS-RINGE (Adrenalin & CPR) 🌟
         updateCircle: function(canvasId, pct, color) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
@@ -353,15 +332,12 @@ window.CPR.UI = (function() {
             const w = canvas.width;
             const h = canvas.height;
             const center = w / 2;
-            const r = center - 8; // 8px Padding zum Rand
+            const r = center - 8; 
 
-            // Alten Frame komplett löschen
             ctx.clearRect(0, 0, w, h);
             
-            // Fortschritt-Ring zeichnen
             if (pct > 0) {
                 ctx.beginPath();
-                // Startet oben bei 0 (Canvas ist in CSS um -90deg gedreht)
                 ctx.arc(center, center, r, 0, 2 * Math.PI * pct);
                 ctx.strokeStyle = color || '#E3000F';
                 ctx.lineWidth = canvasId === 'progress-circle' ? 10 : 6;
