@@ -1,7 +1,7 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
- * - FIX: Adrenalin-Button hat keine starre Setup-Blockade mehr und reagiert sofort.
+ * - FIX: "Geister-Lunge" Bug behoben! Airway-Timer wird beim Wechsel auf 30:2 nun sauber getötet.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -260,8 +260,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.CPR.AudioContext && window.CPR.AudioContext.ctx) window.CPR.AudioContext.nextNoteTime = window.CPR.AudioContext.ctx.currentTime + 0.05;
             if (AudioEngine && typeof AudioEngine.scheduler === 'function') AudioEngine.scheduler();
             
+            // 🌟 CHIRURGISCHER SCHNITT: Tötet den KONT-Timer garantiert, wenn 30:2/15:2 aktiv ist 🌟
             if (AppState.cprMode === 'continuous' && window.CPR.AirwayTimer) {
                 window.CPR.AirwayTimer.start();
+            } else if (window.CPR.AirwayTimer) {
+                window.CPR.AirwayTimer.stop();
             }
 
         } else if (AppState.isVentilationPhase) {
@@ -506,19 +509,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function initMenuEvents() {
-        // 🌟 FIX: Bulletproof Klick-Logik für Adrenalin 🌟
         addClick('btn-adrenalin', (e) => {
             e.stopPropagation(); 
             markMenuAction(); 
             
             try {
                 const st = window.CPR.AppState.state || ''; 
-                // Blockiert nur, wenn das System im Startbildschirm (IDLE) ist. Danach JEDERZEIT klickbar!
                 if (st === 'IDLE') return; 
                 
                 if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(50); 
                 
-                // Bulletproof: Greift sich den Button auf jeden Fall, auch wenn das Icon im HTML getroffen wurde
                 const btn = e.target.closest('#btn-adrenalin') || document.getElementById('btn-adrenalin');
                 const dose = btn ? btn.dataset.dose : '1 mg'; 
                 
