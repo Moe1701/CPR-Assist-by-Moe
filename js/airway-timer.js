@@ -3,6 +3,7 @@ window.CPR = window.CPR || {};
 /**
  * CPR Assist - Autonome Lunge für den KONT Modus
  * Rechnet die Beatmungsfrequenz exakt aus und visualisiert das Atmen.
+ * FIX: Deutliches Aufblitzen ("Beutel-Squeeze") und Live-Countdown.
  */
 window.CPR.AirwayTimer = (function() {
     let rafId = null;
@@ -10,8 +11,8 @@ window.CPR.AirwayTimer = (function() {
     let cycleStartTime = 0;
     
     let cycleDuration = 6000; // Gesamtdauer (Erw = 6s, Kind = 2.4s)
-    let fillDuration = 5000;  // Wie lange füllt sich der Wasserstand?
-    let ventDuration = 1000;  // Einatmungsphase (immer 1s sanftes Leuchten)
+    let fillDuration = 5000;  // Wie lange läuft der Countdown?
+    let ventDuration = 1000;  // Einatmungsphase (immer 1s)
 
     function animate() {
         if (!isRunning) return;
@@ -21,8 +22,10 @@ window.CPR.AirwayTimer = (function() {
 
         const glowBg = document.getElementById('aw-glow-bg');
         const awIcon = document.getElementById('aw-icon');
+        const badge = document.getElementById('airway-countdown-badge');
+        const awLabel = document.getElementById('airway-label');
 
-        // Zyklus abgelaufen -> Neuer Atemzug!
+        // Zyklus abgelaufen -> Neuer Atemzug startet!
         if (elapsed >= cycleDuration) {
             cycleStartTime = now;
             if (window.CPR.Audio && typeof window.CPR.Audio.playVentilationSound === 'function') {
@@ -33,31 +36,65 @@ window.CPR.AirwayTimer = (function() {
             }
         }
 
-        if (glowBg) {
-            if (elapsed < fillDuration) {
-                // 1. FÜLL-PHASE (Aufbau)
-                const pct = elapsed / fillDuration; // 0.0 bis 1.0
+        if (elapsed < fillDuration) {
+            // ==========================================
+            // 1. COUNTDOWN-PHASE (Warten auf Beatmung)
+            // ==========================================
+            
+            // Berechnet die verbleibenden ganzen Sekunden bis zur Beatmung
+            const remainingToVent = Math.ceil((fillDuration - elapsed) / 1000);
+            
+            if (badge) {
+                badge.classList.remove('hidden');
+                badge.innerText = remainingToVent;
                 
-                glowBg.style.opacity = (0.1 + (0.3 * pct)).toString(); // Steigt leicht von 10% auf 40%
-                glowBg.style.transform = `scale(${0.8 + (0.2 * pct)})`; // Wächst leicht von 80% auf 100%
-                glowBg.style.backgroundColor = '#67e8f9'; // Helles Cyan (cyan-300)
+                // Kurz vor der Beatmung (letzte Sekunde) auf Rot/Pulsierend schalten
+                if (remainingToVent <= 1) {
+                    badge.className = 'absolute -top-2 -right-2 bg-amber-500 text-white text-[12px] font-black px-2 min-w-[26px] h-7 flex items-center justify-center rounded-full shadow-md border-2 border-white z-30 transition-colors animate-pulse';
+                } else {
+                    badge.className = 'absolute -top-2 -right-2 bg-slate-800 text-white text-[12px] font-black px-2 min-w-[26px] h-7 flex items-center justify-center rounded-full shadow-md border-2 border-white z-30 transition-colors';
+                }
+            }
+
+            if (glowBg) {
+                glowBg.style.opacity = '0.05'; // Fast unsichtbar
+                glowBg.style.transform = 'scale(0.95)';
+                glowBg.style.backgroundColor = '#e2e8f0'; // Neutrales Grau
                 glowBg.style.boxShadow = 'none';
-                
-                if(awIcon) awIcon.classList.replace('text-cyan-500', 'text-slate-400');
-            } else {
-                // 2. BEATMUNGS-PHASE (Einatmen - Sanftes Leuchten über exakt 1s)
-                const ventElapsed = elapsed - fillDuration;
-                const ventPct = ventElapsed / ventDuration; // 0.0 bis 1.0
+            }
+            
+            if (awIcon) awIcon.classList.replace('text-cyan-500', 'text-slate-400');
+            if (awLabel) {
+                awLabel.innerText = window.CPR.Globals.tempAirwayType || "Atemweg";
+                awLabel.classList.remove('text-cyan-600', 'animate-pulse');
+            }
 
-                // Sanfte Parabel (Sinuswelle): Startet bei 0, steigt auf 1 (Maximum) in der Mitte, fällt auf 0 am Ende
-                const intensity = Math.sin(ventPct * Math.PI); 
+        } else {
+            // ==========================================
+            // 2. BEATMUNGS-PHASE (Exakt 1 Sekunde Squeeze)
+            // ==========================================
+            const ventElapsed = elapsed - fillDuration;
+            
+            // Badge signalisiert Aktion ("!!")
+            if (badge) {
+                badge.innerText = "!!";
+                badge.className = 'absolute -top-2 -right-2 bg-[#E3000F] text-white text-[12px] font-black px-2 min-w-[26px] h-7 flex items-center justify-center rounded-full shadow-md border-2 border-white z-30 animate-pulse';
+            }
 
-                glowBg.style.opacity = (0.4 + (0.45 * intensity)).toString(); // Schwillt an bis max 85%
-                glowBg.style.transform = `scale(${1.0 + (0.15 * intensity)})`; // Schwillt an bis 115% Größe
-                glowBg.style.backgroundColor = '#22d3ee'; // Starkes Cyan (cyan-400)
-                glowBg.style.boxShadow = `0 0 ${30 * intensity}px rgba(34,211,238,${0.7 * intensity})`;
+            if (glowBg) {
+                // "Beutel Squeeze" Effekt: Sofort 100% Sichtbar, dann über 1 Sekunde langsam ausfaden
+                const fadeOut = 1 - (ventElapsed / ventDuration); // Fällt von 1.0 auf 0.0
                 
-                if(awIcon) awIcon.classList.replace('text-slate-400', 'text-cyan-500');
+                glowBg.style.opacity = (0.3 + (0.7 * fadeOut)).toString(); // Startet stark, verblasst sanft
+                glowBg.style.transform = `scale(${1.05 + (0.1 * fadeOut)})`; // "Plustert" sich leicht auf
+                glowBg.style.backgroundColor = '#06b6d4'; // Kräftiges, sichtbares Cyan (cyan-500)
+                glowBg.style.boxShadow = `0 0 ${40 * fadeOut}px rgba(6,182,212,${0.8 * fadeOut})`;
+            }
+            
+            if (awIcon) awIcon.classList.replace('text-slate-400', 'text-cyan-500');
+            if (awLabel) {
+                awLabel.innerText = "BEATMEN";
+                awLabel.classList.add('text-cyan-600', 'animate-pulse');
             }
         }
 
@@ -73,30 +110,29 @@ window.CPR.AirwayTimer = (function() {
             if (isPedi) {
                 // KIND: Exakt 25 Beatmungen / Minute = 2.4s pro Zyklus
                 cycleDuration = 2400;
-                fillDuration = 1400; // Füllt rasant über 1.4s
-                ventDuration = 1000; // Leuchtet weich über 1.0s
+                fillDuration = 1400; // Countdown über 1.4s (Zählt 2.. 1..)
+                ventDuration = 1000; // Flash & Fade über 1.0s
             } else {
                 // ERWACHSENER: Exakt 10 Beatmungen / Minute = 6.0s pro Zyklus
                 cycleDuration = 6000;
-                fillDuration = 5000; // Füllt langsam über 5.0s
-                ventDuration = 1000; // Leuchtet weich über 1.0s
+                fillDuration = 5000; // Countdown über 5.0s (Zählt 5.. 4.. 3.. 2.. 1..)
+                ventDuration = 1000; // Flash & Fade über 1.0s
             }
 
             isRunning = true;
             cycleStartTime = Date.now(); 
             
-            // Verstecke den manuellen Countdown (Da wir ja jetzt automatisch beatmen)
-            const badge = document.getElementById('airway-countdown-badge');
-            if (badge) badge.classList.add('hidden');
-
             animate();
         },
+        
         stop: function() {
             isRunning = false;
             if (rafId) cancelAnimationFrame(rafId);
             
             const glowBg = document.getElementById('aw-glow-bg');
             const awIcon = document.getElementById('aw-icon');
+            const badge = document.getElementById('airway-countdown-badge');
+            const awLabel = document.getElementById('airway-label');
             
             // Alles visuell auf null setzen
             if (glowBg) {
@@ -104,7 +140,12 @@ window.CPR.AirwayTimer = (function() {
                 glowBg.style.transform = 'scale(1)';
                 glowBg.style.boxShadow = 'none';
             }
-            if(awIcon) awIcon.classList.replace('text-cyan-500', 'text-slate-400');
+            if (awIcon) awIcon.classList.replace('text-cyan-500', 'text-slate-400');
+            if (badge) badge.classList.add('hidden');
+            if (awLabel) {
+                awLabel.innerText = window.CPR.Globals.tempAirwayType || "Atemweg";
+                awLabel.classList.remove('text-cyan-600', 'animate-pulse');
+            }
         }
     };
 })();
