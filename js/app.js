@@ -3,7 +3,7 @@
  * - Timer und CCF pausieren exakt während der Rhythmusanalyse.
  * - FIX: Gesamter Hauptkreis startet nun zuverlässig den 2-Minuten Timer.
  * - FIX: Anti-Bounce (Ghost Click) auf smoothe 150ms optimiert.
- * - SMART MEDS: Chamäleon-Logik direkt im Hauptsystem integriert.
+ * - FIX: Bulletproof Session-Restore heilt korrupte NaN-Speicher automatisch.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -16,16 +16,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (UI && typeof UI.setCenterSize === 'function' && size) { UI.setCenterSize(size); }
     }
 
-    // 🌟 OPTIMIERTE ANTI-BOUNCE KLICK-LOGIK (Verhindert Screen-Skipping) 🌟
+    // 🌟 OPTIMIERTE ANTI-BOUNCE KLICK-LOGIK 🌟
     function addClick(id, handler) { 
         const el = document.getElementById(id); 
         if (el) {
             el.addEventListener('click', (e) => {
-                // Blockiert Klicks für 150ms nach einem Screen-Wechsel, um Ghost-Clicks zu verhindern
                 if (window.CPR.Globals && Date.now() - (window.CPR.Globals.lastViewSwitch || 0) < 150) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return;
+                    e.preventDefault(); e.stopPropagation(); return;
                 }
                 handler(e);
             });
@@ -141,7 +138,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- CPR & HANDS-OFF LOGIK ---
     window.CPR.onBeat = function() {
         if (!AppState.isCompressing || AppState.isRunning === false) return;
         
@@ -263,7 +259,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- ROSC LOGIK ---
     function updatePediRoscVitals() {
         const vitalsCard = document.getElementById('pedi-rosc-vitals');
         if (!vitalsCard) return;
@@ -316,7 +311,6 @@ document.addEventListener('DOMContentLoaded', function() {
         Utils.saveSession();
     }
 
-    // --- EVENT LISTENER SETUP ---
     function initHeaderEvents() {
         addClick('btn-toggle-sound', () => {
             Utils.vibrate(20); AppState.isSoundActive = !AppState.isSoundActive;
@@ -394,7 +388,6 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-breaths-done', (e) => { e.stopPropagation(); Utils.vibrate(40); addLogEntry("5 initiale Beatmungen durchgeführt"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
         addClick('btn-breaths-skipped', (e) => { e.stopPropagation(); Utils.vibrate([30, 50]); addLogEntry("5 initiale Beatmungen übersprungen"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
 
-        // 🌟 HAUPTBUTTON FIX: Macht den kompletten Kreis anklickbar für den Start des Timers! 🌟
         addClick('main-btn-area', (e) => {
             if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
             if (Date.now() - (Globals.lastMenuAction || 0) < 500) return;
@@ -611,8 +604,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (AppState.isRunning !== false) { 
                 AppState.totalSeconds += passedSeconds; 
                 AppState.arrestSeconds += passedSeconds; 
-                AppState.cycleSeconds = Math.max(0, AppState.cycleSeconds - passedSeconds); 
-                AppState.adrSeconds = Math.max(0, AppState.adrSeconds - passedSeconds); 
+                
+                // 🌟 FIX: Virenscanner gegen NaN & Rechnet die Zeit im Hintergrund korrekt vorwärts anstatt rückwärts!
+                let currentCprSec = Number(AppState.cycleSeconds) || 0;
+                AppState.cycleSeconds = Math.min(120, currentCprSec + passedSeconds); 
+                
+                let currentAdrSec = Number(AppState.adrSeconds) || 0;
+                AppState.adrSeconds = Math.min(240, currentAdrSec + passedSeconds); 
             }
             AppState.isCompressing = false; 
             
@@ -633,7 +631,6 @@ document.addEventListener('DOMContentLoaded', function() {
             updateCCF(); 
             if (UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); 
             if (UI && typeof UI.updateAdrenalinBadge === 'function') UI.updateAdrenalinBadge();
-            
             if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
 
             if (AppState.shockCount) {
