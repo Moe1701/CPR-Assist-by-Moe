@@ -105,14 +105,21 @@
             <div class="relative flex items-center justify-center translate-y-[25px]">
                 
                 <div id="satellites" class="contents hidden">
-                    <button id="btn-adrenalin" class="satellite-btn pointer-events-auto opacity-0 bg-white border-2 border-red-100 rounded-full shadow-lg text-slate-500" data-dose="1 mg">
+                    
+                    <!-- 🌟 ADRENALIN BUTTON (Mit Ring & Count-Badge) 🌟 -->
+                    <button id="btn-adrenalin" class="satellite-btn pointer-events-auto bg-white border-2 border-red-100 rounded-full shadow-lg text-slate-500" data-dose="1 mg">
                         <canvas id="adr-progress-circle" width="100" height="100" class="absolute inset-0 w-full h-full pointer-events-none opacity-0 transition-opacity duration-300" style="transform: rotate(-90deg);"></canvas>
+                        
                         <div id="adr-inner" class="flex flex-col items-center justify-center w-full h-full transition-opacity duration-300 pointer-events-none relative z-10">
-                            <i class="fa-solid fa-syringe text-[24px] mb-0.5 text-slate-400"></i>
+                            <i id="adr-icon" class="fa-solid fa-syringe text-[24px] mb-0.5 text-slate-400 transition-colors"></i>
                             <span id="adr-text-2" class="text-[12px] font-extrabold tracking-wide mt-1 text-slate-700 leading-tight whitespace-nowrap">1 mg</span>
                         </div>
-                        <span id="badge-adr" class="hidden absolute -bottom-2.5 text-[10px] font-black text-white uppercase tracking-wide bg-[#E3000F] px-2.5 py-0.5 rounded-full border border-white shadow-md pointer-events-none transition-opacity duration-300 whitespace-nowrap z-20">Gesamt: 0</span>
-                        <span id="adr-timer" class="absolute inset-0 flex items-center justify-center text-xl font-black hidden text-slate-600 tracking-tighter pointer-events-none z-10 bg-white/80 backdrop-blur-[1px] rounded-full transition-colors duration-300">04:00</span>
+                        
+                        <!-- Der neue kompakte Zähler-Badge (Anzahl Gaben) -->
+                        <span id="adr-count-badge" class="hidden absolute -top-2 -right-2 bg-[#E3000F] text-white text-[12px] font-black px-2 min-w-[26px] h-7 flex items-center justify-center rounded-full shadow-md border-2 border-white z-30 transition-colors"></span>
+                        
+                        <!-- Countdown in der Mitte (erscheint, wenn Timer läuft) -->
+                        <span id="adr-timer" class="absolute inset-0 flex items-center justify-center text-xl font-black hidden text-slate-600 tracking-tighter pointer-events-none z-20 bg-white/80 backdrop-blur-[1px] rounded-full transition-colors duration-300">04:00</span>
                     </button>
                     
                     <button id="btn-meds-menu" class="satellite-btn pointer-events-auto opacity-0 bg-white border-2 border-purple-100 rounded-full shadow-lg text-slate-500">
@@ -174,12 +181,10 @@
                     <span id="cpr-main-text" class="text-[12px] font-bold tracking-wide uppercase pointer-events-none whitespace-nowrap mt-1 text-slate-600 transition-colors">CPR START</span>
                 </button>
                 
-                <!-- HAUPT-BUTTON (Die große weiße Leinwand) -->
                 <div id="main-btn-area" style="width: 350px; height: 350px;" class="rounded-full bg-white shadow-[0_20px_60px_rgba(0,0,0,0.05)] border-8 border-slate-50 cursor-pointer z-30 transition-all duration-500 overflow-hidden relative pointer-events-auto flex items-center justify-center">
                     
                     <canvas id="progress-circle" width="350" height="350" class="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-500 z-10 opacity-0" style="transform: rotate(-90deg);"></canvas>
                     
-                    <!-- ALLE MENÜ-ANSICHTEN HIER DRIN -->
                     <div id="view-ob-1" class="absolute inset-0 w-full h-full z-20 bg-white">
                         <div class="absolute top-[50px] w-full flex justify-center">
                             <span class="text-[16px] font-black text-slate-700 uppercase tracking-[0.25em] pointer-events-none drop-shadow-sm">Patient wählen</span>
@@ -644,20 +649,20 @@
     </div>
     
     <!-- 🌟 MODULARER APP-AUFBAU 🌟 -->
-    <script src="js/config.js?v=54"></script>
-    <script src="js/utils.js?v=54"></script>
-    <script src="js/audio.js?v=54"></script>
-    <script src="js/export.js?v=54"></script> 
-    <script src="js/settings.js?v=54"></script>
-    <script src="js/checklists.js?v=54"></script>
-    <script src="js/ui.js?v=54"></script>
-    <script src="js/app.js?v=54"></script>
-    <script src="js/airway-timer.js?v=54"></script>
-    <script src="js/adr-timer.js?v=54"></script> 
-    <script src="js/cpr-timer.js?v=54"></script> 
-    <script src="js/help-overlay.js?v=54"></script>
-    <script src="js/debriefing.js?v=54"></script>
-    <script src="js/log-timeline.js?v=54"></script>
+    <script src="js/config.js?v=56"></script>
+    <script src="js/utils.js?v=56"></script>
+    <script src="js/audio.js?v=56"></script>
+    <script src="js/export.js?v=56"></script> 
+    <script src="js/settings.js?v=56"></script>
+    <script src="js/checklists.js?v=56"></script>
+    <script src="js/ui.js?v=56"></script>
+    <script src="js/app.js?v=56"></script>
+    <script src="js/airway-timer.js?v=56"></script>
+    <script src="js/adr-timer.js?v=56"></script> 
+    <script src="js/cpr-timer.js?v=56"></script> 
+    <script src="js/help-overlay.js?v=56"></script>
+    <script src="js/debriefing.js?v=56"></script>
+    <script src="js/log-timeline.js?v=56"></script>
 
 </body>
 </html>
