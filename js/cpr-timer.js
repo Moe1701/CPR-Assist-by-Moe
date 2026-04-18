@@ -1,6 +1,5 @@
 window.CPR = window.CPR || {};
 
-// WICHTIG: Großschreibung korrigiert! (CPRTimer statt CprTimer)
 window.CPR.CPRTimer = (function() {
     let interval = null;
     let accumulatedTime = 0; // In Millisekunden
@@ -18,16 +17,14 @@ window.CPR.CPRTimer = (function() {
         const radius = (width / 2) - 8; // 8px Padding vom Rand
         const center = width / 2;
 
-        // Alten Frame restlos bereinigen
         ctx.clearRect(0, 0, width, height);
         
         if (elapsed > 0 && elapsed <= total) {
             const pct = Math.min(elapsed / total, 1);
             ctx.beginPath();
-            // Startet bei 0 (da das Canvas per CSS ohnehin um -90 Grad rotiert wurde)
             ctx.arc(center, center, radius, 0, pct * 2 * Math.PI, false);
             ctx.lineWidth = 10;
-            ctx.strokeStyle = '#06b6d4'; // Cyan-Farbe für den CPR Fortschritt
+            ctx.strokeStyle = '#06b6d4'; // Cyan-Farbe
             ctx.lineCap = 'round';
             ctx.stroke();
         }
@@ -42,7 +39,7 @@ window.CPR.CPRTimer = (function() {
         const s = (remaining % 60).toString().padStart(2, '0');
         el.innerText = m + ":" + s;
 
-        // Warn-Meldungen (Puls tasten / Precharge)
+        // Warn-Meldungen
         const pa = document.getElementById('inner-prepare-alert');
         const pt = document.getElementById('prepare-time');
         const pc = document.getElementById('inner-precharge-alert');
@@ -53,7 +50,6 @@ window.CPR.CPRTimer = (function() {
             if(pc) { pc.classList.add('hidden'); pc.classList.remove('flex'); }
             if(pt) pt.innerText = remaining;
             
-            // Sound & Vibration bei exakt 30s
             if (remaining === 30 && isRunning) {
                 if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([100, 100]);
                 if (window.CPR.Audio && typeof window.CPR.Audio.playBeep === 'function') window.CPR.Audio.playBeep(1200);
@@ -63,7 +59,6 @@ window.CPR.CPRTimer = (function() {
             if(pc) { pc.classList.remove('hidden'); pc.classList.add('flex'); }
             if(pct) pct.innerText = remaining;
             
-            // Sound & Vibration bei exakt 15s (Precharge)
             if (remaining === 15 && isRunning) {
                 if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([200, 100, 200]);
                 if (window.CPR.Audio && typeof window.CPR.Audio.playBeep === 'function') {
@@ -80,18 +75,15 @@ window.CPR.CPRTimer = (function() {
             }
         }
 
-        // Render Canvas Frame
         drawCircle(elapsed);
     }
 
     function tick() {
         if (!isRunning) return;
         
-        // Background-Safe Berechnung
         const currentElapsedMs = accumulatedTime + (Date.now() - startTime);
         const elapsedSec = Math.floor(currentElapsedMs / 1000);
         
-        // Status in den globalen AppState schreiben (für Session Restore)
         if (window.CPR.AppState) window.CPR.AppState.cycleSeconds = elapsedSec;
         
         updateUI(elapsedSec);
@@ -101,7 +93,6 @@ window.CPR.CPRTimer = (function() {
             pause();
             if (window.CPR.Audio && typeof window.CPR.Audio.playAlert === 'function') window.CPR.Audio.playAlert();
             
-            // Erzwinge die Rhythmusanalyse und wechsle die Ansicht
             if (window.CPR.AppState.state !== 'OB_ANALYZE') {
                 window.CPR.AppState.isCompressing = false;
                 if (window.CPR.UI && typeof window.CPR.UI.navigate === 'function') {
@@ -118,7 +109,6 @@ window.CPR.CPRTimer = (function() {
             if (window.CPR.AppState) window.CPR.AppState.cycleSeconds = 0;
             updateUI(0);
             
-            // CPR Zyklus-Counter inkrementieren
             if (window.CPR.AppState) {
                 window.CPR.AppState.cprCycleCount = (window.CPR.AppState.cprCycleCount || 0) + 1;
                 const badge = document.getElementById('cpr-counter-badge');
@@ -127,13 +117,17 @@ window.CPR.CPRTimer = (function() {
                     badge.innerText = window.CPR.AppState.cprCycleCount;
                 }
             }
+        } else {
+            // 🌟 FIX: Timer-Amnesie behoben! Er holt sich die Zeit jetzt aus dem Speicher.
+            if (window.CPR.AppState && !isNaN(window.CPR.AppState.cycleSeconds)) {
+                accumulatedTime = window.CPR.AppState.cycleSeconds * 1000;
+            }
         }
         
         if (isRunning) return;
         startTime = Date.now();
         isRunning = true;
         
-        // Polling Intervall (Schneller als 1s, damit die UI flüssig bleibt)
         interval = setInterval(tick, 200); 
     }
 
