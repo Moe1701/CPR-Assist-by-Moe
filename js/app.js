@@ -404,8 +404,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (AppState.state === 'OB_ANALYZE') { 
                 Utils.vibrate(50); navHelper('DECISION', 'view-decision', 'large'); 
             } else if (AppState.state === 'WAITING_CPR_RESUME') {
-                // NEU: Falls der Nutzer knapp neben den "Bestätigen" Button klickt,
-                // wertet die App den großen Kreis nun trotzdem als Klick und startet den Timer!
                 Utils.vibrate([40, 40]);
                 AppState.isCompressing = true;
                 addLogEntry("Kompression FORTGESETZT");
@@ -450,7 +448,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target.id === 'btn-joule-cancel') { e.stopPropagation(); markMenuAction(); navHelper('DECISION', 'view-decision', 'large'); }
         });
 
-        // Dieser Button bleibt sicherheitshalber zusätzlich aktiv
         addClick('btn-confirm-resume', (e) => { 
             e.stopPropagation(); Utils.vibrate([40, 40]); AppState.isCompressing = true; addLogEntry("Kompression FORTGESETZT"); activateDashboard(true); updateCprUI(); Utils.saveSession(); 
         });
