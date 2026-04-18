@@ -1,8 +1,7 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
- * - Timer und CCF pausieren exakt während der Rhythmusanalyse.
- * - FIX: Bulletproof Session-Restore heilt korrupte NaN-Speicher automatisch.
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
+ * - FIX: Adrenalin-Button hat keine starre Setup-Blockade mehr und reagiert sofort.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -152,7 +151,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const badge = document.getElementById('cpr-counter-badge');
             if (badge) { badge.innerText = AppState.compressionCount; badge.classList.remove('hidden'); }
             
-            // 🌟 DAS PING-PONG WACHT AUF (Countdown für die Lunge) 🌟
             const remainingComps = limit - AppState.compressionCount;
             const badgeAw = document.getElementById('airway-countdown-badge');
 
@@ -162,7 +160,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     badgeAw.classList.remove('hidden', 'bg-slate-800', 'border-white');
                     badgeAw.classList.add('bg-amber-500', 'border-amber-100', 'animate-pulse');
                 }
-                // Optionaler haptischer Hinweis beim Countdown 3, 2, 1
                 if (remainingComps <= 3 && window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
             } else {
                 if (badgeAw) {
@@ -176,7 +173,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // 🌟 DIE SYNCHRONISIERTE BEATMUNGS-PHASE (Visuelle Atmung) 🌟
     function triggerVentilationPhase() {
         AppState.isCompressing = false; 
         AppState.isVentilationPhase = true; 
@@ -184,33 +180,30 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCprUI();
 
         const glowBg = document.getElementById('aw-glow-bg');
-        if (glowBg) glowBg.className = 'absolute inset-0 rounded-full transition-all duration-500 pointer-events-none';
+        if (glowBg) glowBg.className = 'absolute inset-0 w-full h-full pointer-events-none rounded-full transition-all duration-500';
 
         function doBreath(callback) {
             if (AppState.isRunning === false || AppState.state === 'DECISION') return;
             if (AudioEngine && typeof AudioEngine.playVentilationSound === 'function') AudioEngine.playVentilationSound();
             if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(30);
 
-            // SANFTES AUFBLÄHEN (Einatmen)
             if (glowBg) {
                 glowBg.style.opacity = '0.85';
                 glowBg.style.transform = 'scale(1.15)';
-                glowBg.style.backgroundColor = '#22d3ee'; // cyan-400
+                glowBg.style.backgroundColor = '#22d3ee'; 
                 glowBg.style.boxShadow = '0 0 30px rgba(34,211,238,0.7)';
             }
 
-            // AUSATMEN
             setTimeout(() => {
                 if (glowBg) {
                     glowBg.style.opacity = '0.1';
                     glowBg.style.transform = 'scale(1)';
                     glowBg.style.boxShadow = 'none';
                 }
-                setTimeout(callback, 500); // 0.5s warten bis zum nächsten Atemzug
-            }, 1000); // 1.0s Leuchtdauer
+                setTimeout(callback, 500); 
+            }, 1000); 
         }
 
-        // Führe zwei Beatmungen hintereinander aus
         doBreath(() => {
             doBreath(() => {
                 if (AppState.isRunning && AppState.state !== 'DECISION') {
@@ -267,7 +260,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.CPR.AudioContext && window.CPR.AudioContext.ctx) window.CPR.AudioContext.nextNoteTime = window.CPR.AudioContext.ctx.currentTime + 0.05;
             if (AudioEngine && typeof AudioEngine.scheduler === 'function') AudioEngine.scheduler();
             
-            // 🌟 KONT-MODUS: AirwayTimer als autonomen Lungen-Metronom starten
             if (AppState.cprMode === 'continuous' && window.CPR.AirwayTimer) {
                 window.CPR.AirwayTimer.start();
             }
@@ -288,7 +280,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (mainText) mainText.innerText = "CPR FORTSETZEN";
             if (badge) badge.classList.add('hidden');
             
-            // Wenn CPR pausiert ist (Hands-Off), schläft auch die KONT-Lunge
             if (window.CPR.AirwayTimer) window.CPR.AirwayTimer.stop();
             
             const st = AppState.state || 'IDLE';
@@ -515,11 +506,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function initMenuEvents() {
+        // 🌟 FIX: Bulletproof Klick-Logik für Adrenalin 🌟
         addClick('btn-adrenalin', (e) => {
-            e.stopPropagation(); markMenuAction(); const st = AppState.state || ''; if (st === 'IDLE' || st.indexOf('OB_') === 0) return;
-            Utils.vibrate(50); const dose = e.currentTarget.dataset.dose || '1 mg'; addLogEntry(`Adrenalin (${dose}) gegeben`); AppState.adrCount = (AppState.adrCount || 0) + 1; 
-            if (UI && typeof UI.updateAdrenalinBadge === 'function') UI.updateAdrenalinBadge();
-            if (CPR.AdrTimer && typeof CPR.AdrTimer.start === 'function') CPR.AdrTimer.start(); Utils.saveSession();
+            e.stopPropagation(); 
+            markMenuAction(); 
+            
+            try {
+                const st = window.CPR.AppState.state || ''; 
+                // Blockiert nur, wenn das System im Startbildschirm (IDLE) ist. Danach JEDERZEIT klickbar!
+                if (st === 'IDLE') return; 
+                
+                if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(50); 
+                
+                // Bulletproof: Greift sich den Button auf jeden Fall, auch wenn das Icon im HTML getroffen wurde
+                const btn = e.target.closest('#btn-adrenalin') || document.getElementById('btn-adrenalin');
+                const dose = btn ? btn.dataset.dose : '1 mg'; 
+                
+                window.addLogEntry(`Adrenalin (${dose}) gegeben`); 
+                window.CPR.AppState.adrCount = (window.CPR.AppState.adrCount || 0) + 1; 
+                
+                if (window.CPR.UI && typeof window.CPR.UI.updateAdrenalinBadge === 'function') {
+                    window.CPR.UI.updateAdrenalinBadge();
+                }
+                
+                if (window.CPR.AdrTimer && typeof window.CPR.AdrTimer.start === 'function') {
+                    window.CPR.AdrTimer.start(); 
+                }
+                
+                if (window.CPR.Utils && typeof window.CPR.Utils.saveSession === 'function') {
+                    window.CPR.Utils.saveSession();
+                }
+            } catch(err) {
+                console.error("[CPR] Adrenalin Button Fehler:", err);
+            }
         });
 
         addClick('btn-meds-menu', (e) => {
