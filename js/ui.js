@@ -4,7 +4,7 @@ window.CPR.UI = (function() {
     return {
         // Schaltet zwischen den verschiedenen Menü-Ansichten im Zentrum um
         switchView: function(viewId) {
-            // Anti-Bounce Zeitstempel setzen (verhindert das Überspringen von Screens)
+            // Anti-Bounce Zeitstempel setzen (sperrt Ghost-Clicks für 150ms beim Screen-Wechsel)
             if (window.CPR.Globals) window.CPR.Globals.lastViewSwitch = Date.now();
             
             const allViews = [
@@ -37,7 +37,7 @@ window.CPR.UI = (function() {
                 }
             }
             
-            // FIX: Sichtbarkeit des neuen Canvas-Kreises (statt des alten SVG)
+            // Sichtbarkeit des neuen Canvas-Kreises (statt altem SVG)
             const progCircle = document.getElementById('progress-circle');
             if (progCircle) { 
                 if (targetId === 'view-timer') progCircle.classList.remove('opacity-0'); 
@@ -90,6 +90,10 @@ window.CPR.UI = (function() {
                     wrapper.classList.add('mb-[140px]', 'mt-10');
                 }
 
+                // FIX: Atemweg und CPR flüssig einblenden, wenn der Mittelkreis klein wird
+                if (btnAirway) btnAirway.classList.remove('opacity-0', 'pointer-events-none');
+                if (btnCpr) btnCpr.classList.remove('opacity-0', 'pointer-events-none');
+
                 if(sats) {
                     sats.classList.remove('hidden');
                     setTimeout(function() {
@@ -97,10 +101,6 @@ window.CPR.UI = (function() {
                         btns.forEach(function(b) {
                             b.classList.remove('opacity-0', 'pointer-events-none');
                         });
-                        
-                        // Atemweg und CPR wieder einblenden
-                        if (btnAirway) btnAirway.classList.remove('opacity-0', 'pointer-events-none');
-                        if (btnCpr) btnCpr.classList.remove('opacity-0', 'pointer-events-none');
                     }, 50);
                 }
             } else {
@@ -112,7 +112,7 @@ window.CPR.UI = (function() {
                     wrapper.classList.add('mb-0', 'mt-4');
                 }
 
-                // Atemweg und CPR ausblenden
+                // FIX: Atemweg und CPR sofort ausblenden, damit sie den großen Kreis nicht überlagern!
                 if (btnAirway) btnAirway.classList.add('opacity-0', 'pointer-events-none');
                 if (btnCpr) btnCpr.classList.add('opacity-0', 'pointer-events-none');
 
@@ -190,7 +190,7 @@ window.CPR.UI = (function() {
             if (glowBg) glowBg.style.opacity = '0';
         },
 
-        // 🌟 CHAMELEON-GEHIRN (Smart-Button Logik) 🌟
+        // 🌟 CHAMELEON-GEHIRN (Smart-Button Logik nativ verankert) 🌟
         updateSmartMedsButton: function() {
             const btn = document.getElementById('btn-meds-menu');
             const state = window.CPR.AppState;
@@ -330,7 +330,7 @@ window.CPR.UI = (function() {
             this.updateSmartMedsButton();
         },
 
-        // 🌟 MISSING LINK FIX: Die gelöschte Funktion zum Zeichnen der Canvas-Kreise! 🌟
+        // 🌟 DIE MISSING LINK CANVAS-ENGINE (Adrenalin- & Timer-Ringe) 🌟
         updateCircle: function(canvasId, pct, color) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
@@ -339,24 +339,18 @@ window.CPR.UI = (function() {
             const w = canvas.width;
             const h = canvas.height;
             const center = w / 2;
-            const r = center - 6; // 6px Padding zum Rand
+            const r = center - 8; // 8px Padding zum Rand
 
-            // Alten Frame löschen
+            // Alten Frame komplett löschen
             ctx.clearRect(0, 0, w, h);
             
-            // Hintergrund-Ring zeichnen
-            ctx.beginPath();
-            ctx.arc(center, center, r, 0, 2 * Math.PI);
-            ctx.strokeStyle = canvasId === 'progress-circle' ? '#f1f5f9' : '#fef2f2';
-            ctx.lineWidth = canvasId === 'progress-circle' ? 12 : 6;
-            ctx.stroke();
-
             // Fortschritt-Ring zeichnen
             if (pct > 0) {
                 ctx.beginPath();
+                // Startet oben bei 0 (Canvas ist in CSS um -90deg gedreht)
                 ctx.arc(center, center, r, 0, 2 * Math.PI * pct);
                 ctx.strokeStyle = color || '#E3000F';
-                ctx.lineWidth = canvasId === 'progress-circle' ? 12 : 6;
+                ctx.lineWidth = canvasId === 'progress-circle' ? 10 : 6;
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
