@@ -4,6 +4,9 @@ window.CPR.UI = (function() {
     return {
         // Schaltet zwischen den verschiedenen Menü-Ansichten im Zentrum um
         switchView: function(viewId) {
+            // Anti-Bounce Zeitstempel setzen (verhindert das Überspringen von Screens)
+            if (window.CPR.Globals) window.CPR.Globals.lastViewSwitch = Date.now();
+            
             const allViews = [
                 'view-ob-1', 'view-ob-2', 'view-ob-3', 'view-timer', 'view-decision', 
                 'view-cpr-resume', 'view-joule', 'view-airway', 'view-airway-doc', 
@@ -71,6 +74,10 @@ window.CPR.UI = (function() {
             const sats = document.getElementById('satellites');
             const wrapper = document.getElementById('orbit-wrapper');
             
+            // Die beiden großen Haupt-Buttons
+            const btnAirway = document.getElementById('btn-airway');
+            const btnCpr = document.getElementById('btn-cpr');
+            
             if (!mainBtn) return;
 
             if (size === 'small') {
@@ -89,6 +96,10 @@ window.CPR.UI = (function() {
                         btns.forEach(function(b) {
                             b.classList.remove('opacity-0', 'pointer-events-none');
                         });
+                        
+                        // FIX: Atemweg und CPR wieder einblenden, wenn wir im Timer sind
+                        if (btnAirway) btnAirway.classList.remove('opacity-0', 'pointer-events-none');
+                        if (btnCpr) btnCpr.classList.remove('opacity-0', 'pointer-events-none');
                     }, 50);
                 }
             } else {
@@ -99,6 +110,10 @@ window.CPR.UI = (function() {
                     wrapper.classList.remove('mb-[140px]', 'mt-10');
                     wrapper.classList.add('mb-0', 'mt-4');
                 }
+
+                // FIX: Atemweg und CPR sofort ausblenden, damit sie den großen Kreis nicht überlagern!
+                if (btnAirway) btnAirway.classList.add('opacity-0', 'pointer-events-none');
+                if (btnCpr) btnCpr.classList.add('opacity-0', 'pointer-events-none');
 
                 if(sats) {
                     const btns = sats.querySelectorAll('.satellite-btn');
@@ -174,7 +189,7 @@ window.CPR.UI = (function() {
             if (glowBg) glowBg.style.opacity = '0';
         },
 
-        // 🌟 CHAMELEON-GEHIRN (Smart-Button Logik nativ in UI) 🌟
+        // 🌟 CHAMELEON-GEHIRN (Smart-Button Logik) 🌟
         updateSmartMedsButton: function() {
             const btn = document.getElementById('btn-meds-menu');
             const state = window.CPR.AppState;
@@ -182,7 +197,6 @@ window.CPR.UI = (function() {
 
             const count = state.amioCount || 0;
 
-            // Logik: Im schockbaren Rhythmus UND max. 2 Gaben
             if (state.isShockable && count < 2) {
                 let doseText = count === 0 ? "300 mg" : "150 mg";
                 if (state.isPediatric && state.patientWeight) {
@@ -312,7 +326,6 @@ window.CPR.UI = (function() {
                     '<button class="btn-airway-opt flex-1 bg-cyan-50 border border-cyan-200 text-cyan-700 py-3 rounded-xl font-black text-xs shadow-sm active:scale-95" data-short="LTS">LTS<br><span class="text-[8px] font-bold opacity-70">Larynxtubus</span></button>';
             }
 
-            // TRIGGER FÜR DEN SMART-MEDS BUTTON (Direkt intern, ohne die externe Datei!)
             this.updateSmartMedsButton();
         }
     };
