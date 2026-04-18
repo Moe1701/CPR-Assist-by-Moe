@@ -2,18 +2,18 @@ window.CPR = window.CPR || {};
 
 /**
  * CPR Assist - Adrenalin Timer (Medical Grade)
- * FIX: "NaN" Bug bei fehlendem CONFIG.ADR_INTERVAL behoben.
- * Der Canvas-Ring und Timer funktionieren jetzt absolut zuverlässig!
+ * CHIRURGISCH SAUBER: Keine !important Hacks mehr. Steuert nur noch Tailwind-State-Klassen.
+ * - Layering (Z-Index) wird nun perfekt von der index.html gemanagt.
  */
 window.CPR.AdrTimer = (function() {
     let internalInterval = null;
 
-    // Bulletproof Fallback für die Timer-Dauer (4 Minuten)
+    // Bulletproof Fallback gegen NaN Crashes, falls Config kurzzeitig fehlt
     function getMaxSec() {
         if (window.CPR.CONFIG && window.CPR.CONFIG.ADR_INTERVAL) {
             return window.CPR.CONFIG.ADR_INTERVAL;
         }
-        return 240; // Default: 4 Minuten (240 Sekunden)
+        return 240; // Default: 4 Minuten
     }
 
     function updateUI() {
@@ -34,17 +34,16 @@ window.CPR.AdrTimer = (function() {
                 // ==========================================
                 
                 if (elTime) {
-                    // Verstecken-Klassen vernichten & Sichtbarkeit erzwingen
-                    elTime.classList.remove('hidden', 'bg-white/80', 'backdrop-blur-[1px]');
-                    elTime.style.setProperty('display', 'flex', 'important');
-                    elTime.style.setProperty('text-shadow', '0px 0px 4px rgba(255,255,255,0.8)', 'important');
+                    // Tailwind Klassen weich umschalten
+                    elTime.classList.remove('hidden');
+                    elTime.classList.add('flex');
                     
                     const m = Math.floor(remaining / 60).toString().padStart(2, '0');
                     const s = (remaining % 60).toString().padStart(2, '0');
                     elTime.innerText = m + ':' + s;
                     
-                    // Letzte 30 Sekunden: Alarm-Modus (Rot & Pulsierend)
-                    elTime.classList.remove('text-slate-600', 'text-[#E3000F]', 'text-red-600');
+                    // Alarm ab 30 Sekunden
+                    elTime.classList.remove('text-slate-700', 'text-[#E3000F]');
                     if (remaining <= 30) {
                         elTime.classList.add('text-[#E3000F]', 'animate-pulse');
                     } else {
@@ -53,39 +52,40 @@ window.CPR.AdrTimer = (function() {
                     }
                 }
                 
-                // Spritzen-Icon in der Mitte ausblenden
                 if (elInner) {
-                    elInner.style.setProperty('opacity', '0', 'important');
+                    // Spritze sanft ausblenden
+                    elInner.classList.remove('opacity-100');
+                    elInner.classList.add('opacity-0');
                 }
                 
-                // Roten Ring zeichnen und in den Vordergrund holen
                 if (circle) {
+                    // Canvas Ring sanft einblenden
                     circle.classList.remove('opacity-0');
-                    circle.style.setProperty('opacity', '1', 'important');
-                    circle.style.setProperty('z-index', '25', 'important');
+                    circle.classList.add('opacity-100');
                     
                     const pct = state.adrSeconds / maxSec; 
-                    const ringColor = '#E3000F'; // Immer kräftig Rot
-                    
                     if (window.CPR.UI && typeof window.CPR.UI.updateCircle === 'function') {
-                        window.CPR.UI.updateCircle('adr-progress-circle', pct, ringColor);
+                        window.CPR.UI.updateCircle('adr-progress-circle', pct, '#E3000F'); // Immer Rot
                     }
                 }
             } else {
                 // ==========================================
-                // TIMER INAKTIV / ABGELAUFEN
+                // TIMER INAKTIV / RESET
                 // ==========================================
+                
                 if (elTime) {
-                    elTime.style.setProperty('display', 'none', 'important');
-                    elTime.classList.remove('animate-pulse');
+                    elTime.classList.remove('flex', 'animate-pulse', 'text-[#E3000F]');
+                    elTime.classList.add('hidden', 'text-slate-700');
                 }
                 
                 if (elInner) {
-                    elInner.style.setProperty('opacity', '1', 'important');
+                    elInner.classList.remove('opacity-0');
+                    elInner.classList.add('opacity-100');
                 }
                 
                 if (circle) {
-                    circle.style.setProperty('opacity', '0', 'important');
+                    circle.classList.remove('opacity-100');
+                    circle.classList.add('opacity-0');
                 }
             }
         } catch(e) {
@@ -126,7 +126,7 @@ window.CPR.AdrTimer = (function() {
                             internalInterval = null;
                             updateUI();
                             
-                            // Vibrations- und Sound-Alarm für abgelaufenes Adrenalin
+                            // Vibrations- und Sound-Alarm
                             if (window.CPR.Utils && window.CPR.Utils.vibrate) {
                                 window.CPR.Utils.vibrate([200, 100, 200, 100, 200]);
                             }
