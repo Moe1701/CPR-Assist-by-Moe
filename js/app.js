@@ -1,9 +1,8 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - Timer und CCF pausieren exakt während der Rhythmusanalyse.
- * - FIX: Gesamter Hauptkreis startet nun zuverlässig den 2-Minuten Timer.
- * - FIX: Anti-Bounce (Ghost Click) auf smoothe 150ms optimiert.
  * - FIX: Bulletproof Session-Restore heilt korrupte NaN-Speicher automatisch.
+ * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -16,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (UI && typeof UI.setCenterSize === 'function' && size) { UI.setCenterSize(size); }
     }
 
-    // 🌟 OPTIMIERTE ANTI-BOUNCE KLICK-LOGIK 🌟
     function addClick(id, handler) { 
         const el = document.getElementById(id); 
         if (el) {
@@ -31,7 +29,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function markMenuAction() { Globals.lastMenuAction = Date.now(); }
 
-    // --- NOTFALL-RESET ---
     let logoClickCount = 0; let logoClickTimer = null;
     const logoContainer = document.getElementById('logo-container');
     if (logoContainer) {
@@ -61,7 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- LOGBUCH ---
     function addLogEntry(txt) {
         if (!AppState.protocolData) AppState.protocolData = [];
         AppState.protocolData.push({
@@ -82,7 +78,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     window.addLogEntry = addLogEntry;
 
-    // --- TIMING & CCF ---
     function startMainTimer() {
         const topStats = document.getElementById('top-stats-container');
         if (topStats) topStats.classList.remove('hidden');
@@ -156,21 +151,76 @@ document.addEventListener('DOMContentLoaded', function() {
             const limit = AppState.isPediatric ? 15 : 30;
             const badge = document.getElementById('cpr-counter-badge');
             if (badge) { badge.innerText = AppState.compressionCount; badge.classList.remove('hidden'); }
+            
+            // 🌟 DAS PING-PONG WACHT AUF (Countdown für die Lunge) 🌟
+            const remainingComps = limit - AppState.compressionCount;
+            const badgeAw = document.getElementById('airway-countdown-badge');
+
+            if (remainingComps <= 5 && remainingComps > 0) {
+                if (badgeAw) {
+                    badgeAw.innerText = remainingComps;
+                    badgeAw.classList.remove('hidden', 'bg-slate-800', 'border-white');
+                    badgeAw.classList.add('bg-amber-500', 'border-amber-100', 'animate-pulse');
+                }
+                // Optionaler haptischer Hinweis beim Countdown 3, 2, 1
+                if (remainingComps <= 3 && window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
+            } else {
+                if (badgeAw) {
+                    badgeAw.classList.add('hidden');
+                    badgeAw.classList.remove('bg-amber-500', 'border-amber-100', 'animate-pulse');
+                    badgeAw.classList.add('bg-slate-800', 'border-white');
+                }
+            }
+
             if (AppState.compressionCount >= limit) triggerVentilationPhase();
         }
     };
 
+    // 🌟 DIE SYNCHRONISIERTE BEATMUNGS-PHASE (Visuelle Atmung) 🌟
     function triggerVentilationPhase() {
-        AppState.isCompressing = false; AppState.isVentilationPhase = true; AppState.compressionCount = 0; updateCprUI();
-        if (AudioEngine && typeof AudioEngine.playVentilationSound === 'function') {
-            AudioEngine.playVentilationSound();
-            setTimeout(() => { if (AppState.isVentilationPhase && AppState.isRunning) AudioEngine.playVentilationSound(); }, 1000);
-        }
-        setTimeout(() => {
-            if (AppState.isRunning && AppState.state !== 'DECISION') {
-                AppState.isVentilationPhase = false; AppState.isCompressing = true; updateCprUI();
+        AppState.isCompressing = false; 
+        AppState.isVentilationPhase = true; 
+        AppState.compressionCount = 0; 
+        updateCprUI();
+
+        const glowBg = document.getElementById('aw-glow-bg');
+        if (glowBg) glowBg.className = 'absolute inset-0 rounded-full transition-all duration-500 pointer-events-none';
+
+        function doBreath(callback) {
+            if (AppState.isRunning === false || AppState.state === 'DECISION') return;
+            if (AudioEngine && typeof AudioEngine.playVentilationSound === 'function') AudioEngine.playVentilationSound();
+            if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(30);
+
+            // SANFTES AUFBLÄHEN (Einatmen)
+            if (glowBg) {
+                glowBg.style.opacity = '0.85';
+                glowBg.style.transform = 'scale(1.15)';
+                glowBg.style.backgroundColor = '#22d3ee'; // cyan-400
+                glowBg.style.boxShadow = '0 0 30px rgba(34,211,238,0.7)';
             }
-        }, 2200); 
+
+            // AUSATMEN
+            setTimeout(() => {
+                if (glowBg) {
+                    glowBg.style.opacity = '0.1';
+                    glowBg.style.transform = 'scale(1)';
+                    glowBg.style.boxShadow = 'none';
+                }
+                setTimeout(callback, 500); // 0.5s warten bis zum nächsten Atemzug
+            }, 1000); // 1.0s Leuchtdauer
+        }
+
+        // Führe zwei Beatmungen hintereinander aus
+        doBreath(() => {
+            doBreath(() => {
+                if (AppState.isRunning && AppState.state !== 'DECISION') {
+                    if (glowBg) glowBg.style.opacity = '0';
+                    AppState.isVentilationPhase = false;
+                    AppState.isCompressing = true;
+                    updateCprUI();
+                }
+            });
+        });
     }
 
     function updateCprUI() {
@@ -217,18 +267,29 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.CPR.AudioContext && window.CPR.AudioContext.ctx) window.CPR.AudioContext.nextNoteTime = window.CPR.AudioContext.ctx.currentTime + 0.05;
             if (AudioEngine && typeof AudioEngine.scheduler === 'function') AudioEngine.scheduler();
             
+            // 🌟 KONT-MODUS: AirwayTimer als autonomen Lungen-Metronom starten
+            if (AppState.cprMode === 'continuous' && window.CPR.AirwayTimer) {
+                window.CPR.AirwayTimer.start();
+            }
+
         } else if (AppState.isVentilationPhase) {
             if (iconNormal) iconNormal.classList.add('hidden');
             if (iconPause) iconPause.classList.add('hidden');
             if (iconVent) iconVent.classList.remove('hidden');
             if (mainText) mainText.innerText = "BEATMEN";
             if (badge) badge.classList.add('hidden');
+            
+            if (window.CPR.AirwayTimer) window.CPR.AirwayTimer.stop();
+
         } else {
             if (iconVent) iconVent.classList.add('hidden');
             if (iconPause) iconPause.classList.add('hidden');
             if (iconNormal) iconNormal.classList.remove('hidden');
             if (mainText) mainText.innerText = "CPR FORTSETZEN";
             if (badge) badge.classList.add('hidden');
+            
+            // Wenn CPR pausiert ist (Hands-Off), schläft auch die KONT-Lunge
+            if (window.CPR.AirwayTimer) window.CPR.AirwayTimer.stop();
             
             const st = AppState.state || 'IDLE';
             if (st !== 'IDLE' && !st.startsWith('OB_') && st !== 'END' && st !== 'ROSC_ACTIVE') {
@@ -296,6 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (Globals.roscInterval) { clearInterval(Globals.roscInterval); Globals.roscInterval = null; }
         if (Globals.mainInterval) { clearInterval(Globals.mainInterval); Globals.mainInterval = null; }
         if (CPR.CPRTimer && typeof CPR.CPRTimer.pause === 'function') CPR.CPRTimer.pause();
+        if (window.CPR.AirwayTimer) window.CPR.AirwayTimer.stop();
         
         const arrSec = AppState.arrestSeconds || 0; const compSec = AppState.compressingSeconds || 0; const totSec = AppState.totalSeconds || 0;
         const ccf = arrSec > 0 ? Math.min(100, Math.round((compSec / arrSec) * 100)) : 0;
@@ -605,10 +667,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 AppState.totalSeconds += passedSeconds; 
                 AppState.arrestSeconds += passedSeconds; 
                 
-                // 🌟 FIX: Virenscanner gegen NaN & Rechnet die Zeit im Hintergrund korrekt vorwärts anstatt rückwärts!
                 let currentCprSec = Number(AppState.cycleSeconds) || 0;
                 AppState.cycleSeconds = Math.min(120, currentCprSec + passedSeconds); 
-                
                 let currentAdrSec = Number(AppState.adrSeconds) || 0;
                 AppState.adrSeconds = Math.min(240, currentAdrSec + passedSeconds); 
             }
