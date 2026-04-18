@@ -1,118 +1,172 @@
 window.CPR = window.CPR || {};
 
+// WICHTIG: Großschreibung korrigiert! (CPRTimer statt CprTimer)
 window.CPR.CPRTimer = (function() {
-    let internalInterval = null;
+    let interval = null;
+    let accumulatedTime = 0; // In Millisekunden
+    let startTime = 0;
+    const total = 120; // 2 Minuten Zyklus
+    let isRunning = false;
 
-    function formatMinSec(sec) {
-        const m = Math.floor(sec / 60).toString().padStart(2, '0');
-        const s = (sec % 60).toString().padStart(2, '0');
-        return m + ':' + s;
+    // Zeichnet nativ auf das neue Canvas-Element
+    function drawCircle(elapsed) {
+        const canvas = document.getElementById('progress-circle');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const radius = (width / 2) - 8; // 8px Padding vom Rand
+        const center = width / 2;
+
+        // Alten Frame restlos bereinigen
+        ctx.clearRect(0, 0, width, height);
+        
+        if (elapsed > 0 && elapsed <= total) {
+            const pct = Math.min(elapsed / total, 1);
+            ctx.beginPath();
+            // Startet bei 0 (da das Canvas per CSS ohnehin um -90 Grad rotiert wurde)
+            ctx.arc(center, center, radius, 0, pct * 2 * Math.PI, false);
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#06b6d4'; // Cyan-Farbe für den CPR Fortschritt
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
     }
 
-    function updateUI() {
-        const state = window.CPR.AppState;
-        if (!state) return;
+    function updateUI(elapsed) {
+        const el = document.getElementById('cycle-timer');
+        if (!el) return;
+        
+        const remaining = Math.max(total - elapsed, 0);
+        const m = Math.floor(remaining / 60).toString().padStart(2, '0');
+        const s = (remaining % 60).toString().padStart(2, '0');
+        el.innerText = m + ":" + s;
 
-        const maxSec = window.CPR.CONFIG ? window.CPR.CONFIG.CYCLE_DURATION : 120;
-        const remaining = maxSec - (state.cycleSeconds || 0);
-
-        const elTime = document.getElementById('cycle-timer');
-        if (elTime) elTime.innerText = formatMinSec(Math.max(0, remaining));
-
-        // 🌟 ARCHITEKTUR FIX: Nutze das neue Canvas anstelle des alten SVG 🌟
-        if (window.CPR.UI && typeof window.CPR.UI.updateCircle === 'function') {
-            const pct = Math.max(0, Math.min(1, (state.cycleSeconds || 0) / maxSec));
-            let color = '#E3000F'; // Standard Rot
-            if (remaining <= 30 && remaining > 15) color = '#4f46e5'; // Indigo (Puls tasten)
-            if (remaining <= 15) color = '#f59e0b'; // Amber (Precharge)
-            
-            window.CPR.UI.updateCircle('progress-circle', pct, color);
-        }
-
-        const elPrep = document.getElementById('inner-prepare-alert');
-        const elTimeP = document.getElementById('prepare-time');
-        const elPre = document.getElementById('inner-precharge-alert');
-        const elTimeC = document.getElementById('precharge-time');
-        const mBtnArea = document.getElementById('main-btn-area');
-
-        if (elPrep) elPrep.classList.add('hidden');
-        if (elPre) elPre.classList.add('hidden');
-        if (mBtnArea) mBtnArea.classList.remove('timer-ended', 'animate-cpr-warn');
-
+        // Warn-Meldungen (Puls tasten / Precharge)
+        const pa = document.getElementById('inner-prepare-alert');
+        const pt = document.getElementById('prepare-time');
+        const pc = document.getElementById('inner-precharge-alert');
+        const pct = document.getElementById('precharge-time');
+        
         if (remaining <= 30 && remaining > 15) {
-            if (elPrep) elPrep.classList.remove('hidden');
-            if (elTimeP) elTimeP.innerText = remaining;
-            if (remaining === 30 && state.isRunning) {
-                window.CPR.Utils.vibrate([100, 100]);
+            if(pa) { pa.classList.remove('hidden'); pa.classList.add('flex'); }
+            if(pc) { pc.classList.add('hidden'); pc.classList.remove('flex'); }
+            if(pt) pt.innerText = remaining;
+            
+            // Sound & Vibration bei exakt 30s
+            if (remaining === 30 && isRunning) {
+                if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([100, 100]);
                 if (window.CPR.Audio && typeof window.CPR.Audio.playBeep === 'function') window.CPR.Audio.playBeep(1200);
             }
         } else if (remaining <= 15 && remaining > 0) {
-            if (elPre) elPre.classList.remove('hidden');
-            if (elTimeC) elTimeC.innerText = remaining;
-            if (mBtnArea) mBtnArea.classList.add('animate-cpr-warn');
-            if (remaining === 15 && state.isRunning) {
-                window.CPR.Utils.vibrate([200, 100, 200]);
+            if(pa) { pa.classList.add('hidden'); pa.classList.remove('flex'); }
+            if(pc) { pc.classList.remove('hidden'); pc.classList.add('flex'); }
+            if(pct) pct.innerText = remaining;
+            
+            // Sound & Vibration bei exakt 15s (Precharge)
+            if (remaining === 15 && isRunning) {
+                if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([200, 100, 200]);
                 if (window.CPR.Audio && typeof window.CPR.Audio.playBeep === 'function') {
                     window.CPR.Audio.playBeep(1000);
-                    setTimeout(function(){ window.CPR.Audio.playBeep(1000); }, 200);
+                    setTimeout(function() { window.CPR.Audio.playBeep(1000); }, 200);
                 }
             }
-        } else if (remaining <= 0) {
-            if (elTime) elTime.innerText = "00:00";
-            if (mBtnArea) mBtnArea.classList.add('timer-ended');
-            if (remaining === 0 && state.isRunning) {
-                window.CPR.Utils.vibrate([500, 200, 500, 200, 500]);
+        } else {
+            if(pa) { pa.classList.add('hidden'); pa.classList.remove('flex'); }
+            if(pc) { pc.classList.add('hidden'); pc.classList.remove('flex'); }
+            
+            if (remaining === 0 && isRunning) {
+                if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([500, 200, 500, 200, 500]);
+            }
+        }
+
+        // Render Canvas Frame
+        drawCircle(elapsed);
+    }
+
+    function tick() {
+        if (!isRunning) return;
+        
+        // Background-Safe Berechnung
+        const currentElapsedMs = accumulatedTime + (Date.now() - startTime);
+        const elapsedSec = Math.floor(currentElapsedMs / 1000);
+        
+        // Status in den globalen AppState schreiben (für Session Restore)
+        if (window.CPR.AppState) window.CPR.AppState.cycleSeconds = elapsedSec;
+        
+        updateUI(elapsedSec);
+
+        // Zyklus abgelaufen!
+        if (elapsedSec >= total) {
+            pause();
+            if (window.CPR.Audio && typeof window.CPR.Audio.playAlert === 'function') window.CPR.Audio.playAlert();
+            
+            // Erzwinge die Rhythmusanalyse und wechsle die Ansicht
+            if (window.CPR.AppState.state !== 'OB_ANALYZE') {
+                window.CPR.AppState.isCompressing = false;
+                if (window.CPR.UI && typeof window.CPR.UI.navigate === 'function') {
+                    window.CPR.UI.navigate('DECISION', 'view-decision', 'large');
+                }
+                if (window.CPR.updateCprUI) window.CPR.updateCprUI();
             }
         }
     }
 
+    function start(resetTimer = false) {
+        if (resetTimer) {
+            accumulatedTime = 0;
+            if (window.CPR.AppState) window.CPR.AppState.cycleSeconds = 0;
+            updateUI(0);
+            
+            // CPR Zyklus-Counter inkrementieren
+            if (window.CPR.AppState) {
+                window.CPR.AppState.cprCycleCount = (window.CPR.AppState.cprCycleCount || 0) + 1;
+                const badge = document.getElementById('cpr-counter-badge');
+                if (badge) {
+                    badge.classList.remove('hidden');
+                    badge.innerText = window.CPR.AppState.cprCycleCount;
+                }
+            }
+        }
+        
+        if (isRunning) return;
+        startTime = Date.now();
+        isRunning = true;
+        
+        // Polling Intervall (Schneller als 1s, damit die UI flüssig bleibt)
+        interval = setInterval(tick, 200); 
+    }
+
+    function pause() {
+        if (!isRunning) return;
+        accumulatedTime += (Date.now() - startTime);
+        isRunning = false;
+        clearInterval(interval);
+    }
+
     return {
-        start: function(reset) {
-            if (reset) {
-                window.CPR.AppState.cycleSeconds = 0;
-            }
-            updateUI();
-
-            if (internalInterval) clearInterval(internalInterval);
-            let lastTick = Date.now();
-
-            internalInterval = setInterval(function() {
-                if (window.CPR.AppState.isRunning === false) {
-                    lastTick = Date.now();
-                    return;
-                }
-                const now = Date.now();
-                const deltaMs = now - lastTick;
-
-                if (deltaMs >= 1000) {
-                    const deltaSec = Math.floor(deltaMs / 1000);
-                    window.CPR.AppState.cycleSeconds += deltaSec;
-                    
-                    const maxSec = window.CPR.CONFIG ? window.CPR.CONFIG.CYCLE_DURATION : 120;
-                    if (window.CPR.AppState.cycleSeconds >= maxSec) {
-                        window.CPR.AppState.cycleSeconds = maxSec;
-                        updateUI();
-                        // Bei Ablauf sofort Analyse erzwingen
-                        if (window.CPR.AppState.state !== 'OB_ANALYZE') {
-                            window.CPR.AppState.isCompressing = false;
-                            if (window.CPR.UI && typeof window.CPR.UI.navigate === 'function') {
-                                window.CPR.UI.navigate('DECISION', 'view-decision', 'large');
-                            }
-                            if (window.CPR.updateCprUI) window.CPR.updateCprUI();
-                        }
-                    } else {
-                        updateUI();
-                    }
-                    lastTick += deltaSec * 1000;
-                }
-            }, 200);
+        start: start,
+        pause: pause,
+        reset: function() {
+            pause();
+            accumulatedTime = 0;
+            if (window.CPR.AppState) window.CPR.AppState.cycleSeconds = 0;
+            updateUI(0);
+            const badge = document.getElementById('cpr-counter-badge');
+            if (badge) badge.classList.add('hidden');
+            
+            const pa = document.getElementById('inner-prepare-alert');
+            const pc = document.getElementById('inner-precharge-alert');
+            if(pa) { pa.classList.add('hidden'); pa.classList.remove('flex'); }
+            if(pc) { pc.classList.add('hidden'); pc.classList.remove('flex'); }
         },
-        pause: function() {
-            if (internalInterval) {
-                clearInterval(internalInterval);
-                internalInterval = null;
-            }
+        isRunning: function() { return isRunning; },
+        getElapsed: function() {
+            if (!isRunning) return Math.floor(accumulatedTime / 1000);
+            return Math.floor((accumulatedTime + (Date.now() - startTime)) / 1000);
         },
-        updateUI: updateUI
+        updateUI: function() {
+            updateUI(this.getElapsed());
+        }
     };
 })();
