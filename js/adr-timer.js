@@ -2,9 +2,7 @@ window.CPR = window.CPR || {};
 
 /**
  * CPR Assist - Adrenalin Timer (Medical Grade)
- * Zeichnet den blauen Canvas-Ring im Uhrzeigersinn und zeigt die verbleibende Zeit.
- * Der Zähler-Badge (Anzahl Gaben) wird separat durch die ui.js gesteuert.
- * Bulletproof: Kann bei Klick nicht mehr crashen.
+ * FIX: Erzwingt Sichtbarkeit gegen CSS-Blockaden & bringt den ROTEN Canvas-Ring zurück!
  */
 window.CPR.AdrTimer = (function() {
     let internalInterval = null;
@@ -22,9 +20,15 @@ window.CPR.AdrTimer = (function() {
             const circle = document.getElementById('adr-progress-circle');
 
             if (state.adrSeconds > 0 && remaining > 0) {
-                // Timer ist aktiv und läuft
+                // ==========================================
+                // TIMER LÄUFT
+                // ==========================================
+                
                 if (elTime) {
+                    // Holzhammer-Methode: Zwingt den Timer auf sichtbar (überschreibt CSS)
                     elTime.classList.remove('hidden');
+                    elTime.style.display = 'flex'; 
+                    
                     const m = Math.floor(remaining / 60).toString().padStart(2, '0');
                     const s = (remaining % 60).toString().padStart(2, '0');
                     elTime.innerText = m + ':' + s;
@@ -39,28 +43,38 @@ window.CPR.AdrTimer = (function() {
                     }
                 }
                 
-                // Versteckt das Spritzen-Icon in der Mitte, damit der Text perfekt lesbar ist
+                // Versteckt das Spritzen-Icon in der Mitte
                 if (elInner) elInner.style.opacity = '0';
                 
-                // Zeichnet den sich füllenden Ring
+                // Zeichnet den sich füllenden ROTEN Ring
                 if (circle) {
                     circle.classList.remove('opacity-0');
-                    const pct = state.adrSeconds / maxSec; // 0.0 bis 1.0 (Füllt sich auf)
-                    const ringColor = remaining <= 30 ? '#ef4444' : '#06b6d4'; // Rot (Warnung) oder Cyan
+                    circle.style.opacity = '1'; // Erzwingt Sichtbarkeit
+                    
+                    const pct = state.adrSeconds / maxSec; // 0.0 bis 1.0
+                    const ringColor = '#E3000F'; // IMMER ROT, wie gewünscht!
                     
                     if (window.CPR.UI && typeof window.CPR.UI.updateCircle === 'function') {
                         window.CPR.UI.updateCircle('adr-progress-circle', pct, ringColor);
                     }
                 }
             } else {
-                // Timer ist inaktiv oder abgelaufen
+                // ==========================================
+                // TIMER INAKTIV / ABGELAUFEN
+                // ==========================================
                 if (elTime) {
                     elTime.classList.add('hidden');
+                    elTime.style.display = 'none'; // Versteckt den Text
                     elTime.classList.remove('text-[#E3000F]', 'text-red-600', 'animate-pulse');
                     elTime.classList.add('text-slate-600');
                 }
-                if (elInner) elInner.style.opacity = '1';
-                if (circle) circle.classList.add('opacity-0');
+                
+                if (elInner) elInner.style.opacity = '1'; // Spritze wieder da
+                
+                if (circle) {
+                    circle.classList.add('opacity-0');
+                    circle.style.opacity = '0';
+                }
             }
         } catch(e) {
             console.error("[CPR] Fehler im Adrenalin UI Update:", e);
