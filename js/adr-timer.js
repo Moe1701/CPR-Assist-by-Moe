@@ -2,18 +2,26 @@ window.CPR = window.CPR || {};
 
 /**
  * CPR Assist - Adrenalin Timer (Medical Grade)
- * FIX: Erzwingt Sichtbarkeit gegen CSS-Blockaden & bringt den ROTEN Canvas-Ring 
- * sowie den 04:00 Countdown zurück!
+ * FIX: "NaN" Bug bei fehlendem CONFIG.ADR_INTERVAL behoben.
+ * Der Canvas-Ring und Timer funktionieren jetzt absolut zuverlässig!
  */
 window.CPR.AdrTimer = (function() {
     let internalInterval = null;
+
+    // Bulletproof Fallback für die Timer-Dauer (4 Minuten)
+    function getMaxSec() {
+        if (window.CPR.CONFIG && window.CPR.CONFIG.ADR_INTERVAL) {
+            return window.CPR.CONFIG.ADR_INTERVAL;
+        }
+        return 240; // Default: 4 Minuten (240 Sekunden)
+    }
 
     function updateUI() {
         try {
             const state = window.CPR.AppState;
             if (!state) return;
 
-            const maxSec = window.CPR.CONFIG ? window.CPR.CONFIG.ADR_INTERVAL : 240;
+            const maxSec = getMaxSec();
             const remaining = maxSec - (state.adrSeconds || 0);
 
             const elTime = document.getElementById('adr-timer');
@@ -26,7 +34,7 @@ window.CPR.AdrTimer = (function() {
                 // ==========================================
                 
                 if (elTime) {
-                    // Holzhammer 1: Verstecken-Klassen vernichten & Sichtbarkeit per Inline-Style erzwingen
+                    // Verstecken-Klassen vernichten & Sichtbarkeit erzwingen
                     elTime.classList.remove('hidden', 'bg-white/80', 'backdrop-blur-[1px]');
                     elTime.style.setProperty('display', 'flex', 'important');
                     elTime.style.setProperty('text-shadow', '0px 0px 4px rgba(255,255,255,0.8)', 'important');
@@ -45,19 +53,19 @@ window.CPR.AdrTimer = (function() {
                     }
                 }
                 
-                // Holzhammer 2: Spritzen-Icon in der Mitte zwingend unsichtbar machen
+                // Spritzen-Icon in der Mitte ausblenden
                 if (elInner) {
                     elInner.style.setProperty('opacity', '0', 'important');
                 }
                 
-                // Holzhammer 3: Roten Ring zeichnen und Z-Index GANZ nach vorne holen
+                // Roten Ring zeichnen und in den Vordergrund holen
                 if (circle) {
                     circle.classList.remove('opacity-0');
                     circle.style.setProperty('opacity', '1', 'important');
                     circle.style.setProperty('z-index', '25', 'important');
                     
-                    const pct = state.adrSeconds / maxSec; // 0.0 bis 1.0
-                    const ringColor = '#E3000F'; // IMMER ROT!
+                    const pct = state.adrSeconds / maxSec; 
+                    const ringColor = '#E3000F'; // Immer kräftig Rot
                     
                     if (window.CPR.UI && typeof window.CPR.UI.updateCircle === 'function') {
                         window.CPR.UI.updateCircle('adr-progress-circle', pct, ringColor);
@@ -73,7 +81,7 @@ window.CPR.AdrTimer = (function() {
                 }
                 
                 if (elInner) {
-                    elInner.style.setProperty('opacity', '1', 'important'); // Spritze wieder da
+                    elInner.style.setProperty('opacity', '1', 'important');
                 }
                 
                 if (circle) {
@@ -97,7 +105,7 @@ window.CPR.AdrTimer = (function() {
 
             internalInterval = setInterval(function() {
                 try {
-                    // Stoppt die Zeit, wenn die Reanimation pausiert ist (z.B. ROSC)
+                    // Stoppt die Zeit bei Reanimations-Pause (z.B. ROSC)
                     if (window.CPR.AppState && window.CPR.AppState.isRunning === false) {
                         lastTick = Date.now();
                         return;
@@ -110,7 +118,7 @@ window.CPR.AdrTimer = (function() {
                         const deltaSec = Math.floor(deltaMs / 1000);
                         window.CPR.AppState.adrSeconds += deltaSec;
                         
-                        const maxSec = window.CPR.CONFIG ? window.CPR.CONFIG.ADR_INTERVAL : 240;
+                        const maxSec = getMaxSec();
                         
                         if (window.CPR.AppState.adrSeconds >= maxSec) {
                             window.CPR.AppState.adrSeconds = 0;
