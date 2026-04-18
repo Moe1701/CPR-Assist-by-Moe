@@ -2,18 +2,14 @@ window.CPR = window.CPR || {};
 
 /**
  * CPR Assist - Adrenalin Timer (Medical Grade)
- * CHIRURGISCH SAUBER: Keine !important Hacks mehr. Steuert nur noch Tailwind-State-Klassen.
- * - Layering (Z-Index) wird nun perfekt von der index.html gemanagt.
+ * CHIRURGISCHER SCHNITT: Komplett geschützt gegen Tailwind CSS Konflikte.
+ * Nutzt ausschließlich natives DOM-Styling (style.display & style.opacity).
  */
 window.CPR.AdrTimer = (function() {
     let internalInterval = null;
 
-    // Bulletproof Fallback gegen NaN Crashes, falls Config kurzzeitig fehlt
     function getMaxSec() {
-        if (window.CPR.CONFIG && window.CPR.CONFIG.ADR_INTERVAL) {
-            return window.CPR.CONFIG.ADR_INTERVAL;
-        }
-        return 240; // Default: 4 Minuten
+        return (window.CPR.CONFIG && window.CPR.CONFIG.ADR_INTERVAL) ? window.CPR.CONFIG.ADR_INTERVAL : 240;
     }
 
     function updateUI() {
@@ -32,61 +28,46 @@ window.CPR.AdrTimer = (function() {
                 // ==========================================
                 // TIMER LÄUFT
                 // ==========================================
-                
                 if (elTime) {
-                    // Tailwind Klassen weich umschalten
-                    elTime.classList.remove('hidden');
-                    elTime.classList.add('flex');
+                    // Natives, fehlerfreies Einblenden
+                    elTime.style.display = 'flex';
                     
                     const m = Math.floor(remaining / 60).toString().padStart(2, '0');
                     const s = (remaining % 60).toString().padStart(2, '0');
                     elTime.innerText = m + ':' + s;
-                    
-                    // Alarm ab 30 Sekunden
-                    elTime.classList.remove('text-slate-700', 'text-[#E3000F]');
+
                     if (remaining <= 30) {
                         elTime.classList.add('text-[#E3000F]', 'animate-pulse');
+                        elTime.classList.remove('text-slate-700');
                     } else {
                         elTime.classList.add('text-slate-700');
-                        elTime.classList.remove('animate-pulse');
+                        elTime.classList.remove('text-[#E3000F]', 'animate-pulse');
                     }
                 }
                 
-                if (elInner) {
-                    // Spritze sanft ausblenden
-                    elInner.classList.remove('opacity-100');
-                    elInner.classList.add('opacity-0');
-                }
+                // Spritze natives Ausblenden
+                if (elInner) elInner.style.opacity = '0';
                 
+                // Ring natives Einblenden
                 if (circle) {
-                    // Canvas Ring sanft einblenden
-                    circle.classList.remove('opacity-0');
-                    circle.classList.add('opacity-100');
-                    
-                    const pct = state.adrSeconds / maxSec; 
+                    circle.style.opacity = '1';
+                    const pct = state.adrSeconds / maxSec;
                     if (window.CPR.UI && typeof window.CPR.UI.updateCircle === 'function') {
-                        window.CPR.UI.updateCircle('adr-progress-circle', pct, '#E3000F'); // Immer Rot
+                        window.CPR.UI.updateCircle('adr-progress-circle', pct, '#E3000F');
                     }
                 }
             } else {
                 // ==========================================
                 // TIMER INAKTIV / RESET
                 // ==========================================
-                
                 if (elTime) {
-                    elTime.classList.remove('flex', 'animate-pulse', 'text-[#E3000F]');
-                    elTime.classList.add('hidden', 'text-slate-700');
+                    elTime.style.display = 'none';
+                    elTime.classList.remove('animate-pulse', 'text-[#E3000F]');
+                    elTime.classList.add('text-slate-700');
                 }
                 
-                if (elInner) {
-                    elInner.classList.remove('opacity-0');
-                    elInner.classList.add('opacity-100');
-                }
-                
-                if (circle) {
-                    circle.classList.remove('opacity-100');
-                    circle.classList.add('opacity-0');
-                }
+                if (elInner) elInner.style.opacity = '1';
+                if (circle) circle.style.opacity = '0';
             }
         } catch(e) {
             console.error("[CPR] Fehler im Adrenalin UI Update:", e);
@@ -105,7 +86,6 @@ window.CPR.AdrTimer = (function() {
 
             internalInterval = setInterval(function() {
                 try {
-                    // Stoppt die Zeit bei Reanimations-Pause (z.B. ROSC)
                     if (window.CPR.AppState && window.CPR.AppState.isRunning === false) {
                         lastTick = Date.now();
                         return;
@@ -126,7 +106,6 @@ window.CPR.AdrTimer = (function() {
                             internalInterval = null;
                             updateUI();
                             
-                            // Vibrations- und Sound-Alarm
                             if (window.CPR.Utils && window.CPR.Utils.vibrate) {
                                 window.CPR.Utils.vibrate([200, 100, 200, 100, 200]);
                             }
