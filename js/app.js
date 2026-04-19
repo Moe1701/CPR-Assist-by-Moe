@@ -1,8 +1,7 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
- * - FIX: "Geister-Lunge" Bug behoben! Airway-Timer wird beim Wechsel auf 30:2 nun sauber getötet.
- * - FIX: Badge-Anzeige im 30:2 Modus nutzt zwingende Inline-Styles gegen CSS-Konflikte.
+ * - UX FIX: Das temporäre Fadenkreuz-Messwerkzeug ist direkt hier integriert (Kein HTML-Edit nötig!)
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -155,10 +154,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const remainingComps = limit - AppState.compressionCount;
             const badgeAw = document.getElementById('airway-countdown-badge');
 
-            // 🌟 CHIRURGISCHER SCHNITT: Natives Display-Styling für das Airway-Badge
             if (remainingComps <= 5 && remainingComps > 0) {
                 if (badgeAw) {
-                    badgeAw.style.display = 'flex'; // Zwingend sichtbar machen!
+                    badgeAw.style.display = 'flex'; 
                     badgeAw.innerText = remainingComps;
                     badgeAw.classList.remove('hidden', 'bg-slate-800', 'border-white');
                     badgeAw.classList.add('bg-amber-500', 'border-amber-100', 'animate-pulse');
@@ -166,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (remainingComps <= 3 && window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
             } else {
                 if (badgeAw) {
-                    badgeAw.style.display = 'none'; // Zwingend verstecken!
+                    badgeAw.style.display = 'none'; 
                     badgeAw.classList.add('hidden');
                     badgeAw.classList.remove('bg-amber-500', 'border-amber-100', 'animate-pulse');
                     badgeAw.classList.add('bg-slate-800', 'border-white');
@@ -264,7 +262,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.CPR.AudioContext && window.CPR.AudioContext.ctx) window.CPR.AudioContext.nextNoteTime = window.CPR.AudioContext.ctx.currentTime + 0.05;
             if (AudioEngine && typeof AudioEngine.scheduler === 'function') AudioEngine.scheduler();
             
-            // 🌟 CHIRURGISCHER SCHNITT: Tötet den KONT-Timer garantiert, wenn 30:2/15:2 aktiv ist 🌟
             if (AppState.cprMode === 'continuous' && window.CPR.AirwayTimer) {
                 window.CPR.AirwayTimer.start();
             } else if (window.CPR.AirwayTimer) {
@@ -516,27 +513,20 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-adrenalin', (e) => {
             e.stopPropagation(); 
             markMenuAction(); 
-            
             try {
                 const st = window.CPR.AppState.state || ''; 
                 if (st === 'IDLE') return; 
-                
                 if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(50); 
-                
                 const btn = e.target.closest('#btn-adrenalin') || document.getElementById('btn-adrenalin');
                 const dose = btn ? btn.dataset.dose : '1 mg'; 
-                
                 window.addLogEntry(`Adrenalin (${dose}) gegeben`); 
                 window.CPR.AppState.adrCount = (window.CPR.AppState.adrCount || 0) + 1; 
-                
                 if (window.CPR.UI && typeof window.CPR.UI.updateAdrenalinBadge === 'function') {
                     window.CPR.UI.updateAdrenalinBadge();
                 }
-                
                 if (window.CPR.AdrTimer && typeof window.CPR.AdrTimer.start === 'function') {
                     window.CPR.AdrTimer.start(); 
                 }
-                
                 if (window.CPR.Utils && typeof window.CPR.Utils.saveSession === 'function') {
                     window.CPR.Utils.saveSession();
                 }
@@ -805,3 +795,85 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 100);
 });
+
+// =========================================================================
+// UI/UX DEBUG MODUS (Fadenkreuz & Cache-Buster) - VOLLAUTOMATISCH INTEGRIERT
+// =========================================================================
+(function() {
+    // 1. Zwingt das iPad sofort die NEUE style.css zu laden! (Kein Cache Problem mehr)
+    const links = document.querySelectorAll('link[rel="stylesheet"]');
+    links.forEach(l => {
+        if(l.href.includes('style.css')) {
+            l.href = l.href.split('?')[0] + '?v=' + Date.now();
+        }
+    });
+
+    // 2. Fadenkreuz Canvas anlegen (Sichtbar, sobald die App geladen ist)
+    setTimeout(() => {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'debug-canvas';
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+        canvas.style.zIndex = '999999';
+        canvas.style.pointerEvents = 'none'; // Klicks gehen durch das Fadenkreuz hindurch!
+        document.body.appendChild(canvas);
+
+        function drawGrid() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Den exakten Abstand zwischen Top-Stats und Bildschirm-Boden messen
+            const topStats = document.getElementById('top-stats-container');
+            const header = document.querySelector('header');
+            let topY = header ? header.getBoundingClientRect().bottom : 0;
+            if (topStats && !topStats.classList.contains('hidden')) {
+                topY = topStats.getBoundingClientRect().bottom;
+            }
+
+            const bottomY = window.innerHeight;
+            const originY = topY + ((bottomY - topY) / 2); // Exakte Y-Mitte berechnen
+            const originX = window.innerWidth / 2; // Exakte X-Mitte berechnen
+
+            ctx.strokeStyle = 'rgba(255, 0, 255, 0.6)';
+            ctx.fillStyle = 'rgba(255, 0, 255, 0.9)';
+            ctx.font = 'bold 10px monospace';
+            ctx.lineWidth = 1.5;
+
+            // X- und Y-Achse zeichnen
+            ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); ctx.stroke();
+
+            const step = 10;
+            // X-Achse beschriften
+            for(let x = originX; x < canvas.width; x += step) {
+                ctx.beginPath(); ctx.moveTo(x, originY - 4); ctx.lineTo(x, originY + 4); ctx.stroke();
+                if((x - originX) % 50 === 0 && x !== originX) ctx.fillText(`+${Math.round(x - originX)}`, x + 2, originY - 8);
+            }
+            for(let x = originX; x > 0; x -= step) {
+                ctx.beginPath(); ctx.moveTo(x, originY - 4); ctx.lineTo(x, originY + 4); ctx.stroke();
+                if((originX - x) % 50 === 0 && x !== originX) ctx.fillText(`-${Math.round(originX - x)}`, x - 25, originY - 8);
+            }
+
+            // Y-Achse beschriften
+            for(let y = originY; y < canvas.height; y += step) {
+                ctx.beginPath(); ctx.moveTo(originX - 4, y); ctx.lineTo(originX + 4, y); ctx.stroke();
+                if((y - originY) % 50 === 0 && y !== originY) ctx.fillText(`+${Math.round(y - originY)}`, originX + 8, y + 4);
+            }
+            for(let y = originY; y > 0; y -= step) {
+                ctx.beginPath(); ctx.moveTo(originX - 4, y); ctx.lineTo(originX + 4, y); ctx.stroke();
+                if((originY - y) % 50 === 0 && y !== originY) ctx.fillText(`-${Math.round(originY - y)}`, originX + 8, y + 4);
+            }
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillText("0,0", originX + 8, originY - 8);
+        }
+
+        window.addEventListener('resize', drawGrid);
+        setInterval(drawGrid, 500); // Aktualisiert das Netz, sobald die Top-Stats auftauchen
+    }, 1000);
+})();
