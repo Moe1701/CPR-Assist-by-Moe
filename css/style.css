@@ -18,22 +18,25 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
 :root {
     /* MOBILE FIRST (Handys) */
     --sat-size: 72px;
-    --orbit-radius: 170px; 
+    /* 🌟 FIX: Orbit auf 160px erweitert (Edge-to-Edge auf dem Handy) */
+    --orbit-radius: 160px; 
     --main-size: 85px;
-    --main-x: 105px;
+    /* 🌟 FIX: Atemweg & CPR leicht nach außen (auf 110px), wegen dem größeren Zentrum */
+    --main-x: 110px;
     --main-y: 250px; 
-    --center-btn-size: 200px;
+    /* 🌟 FIX: Zentraler Button jetzt 220px auf dem Handy! */
+    --center-btn-size: 220px;
 }
 
 @media (min-width: 768px) {
     :root {
         /* iPAD & TABLET (Mehr Platz) */
         --sat-size: 90px;
-        --orbit-radius: 220px;  /* Minimal größer, für perfekten Abstand */
+        --orbit-radius: 220px;
         --main-size: 100px;
-        --main-x: 125px;        /* Atemweg/CPR rutschen etwas nach außen... */
-        --main-y: 290px;        /* ...damit sie den 250px Button nicht berühren */
-        --center-btn-size: 250px; /* USER WUNSCH: Exakt 250px */
+        --main-x: 125px;
+        --main-y: 290px; 
+        --center-btn-size: 250px;
     }
 }
 
@@ -136,66 +139,57 @@ body.debug-mode #orbit-wrapper > div::before {
     padding: 0 !important;
 }
 
-/* 🌟 FIX: Neutralisiert den alten 25px Verschiebe-Fehler im Onboarding! */
 #orbit-wrapper > div.relative {
     transform: translateY(0) !important;
 }
 
-/* 🌟 SMARTE WEICHE: Dashboard Button Größe */
 body.dashboard-active #main-btn-area {
     width: var(--center-btn-size) !important;
     height: var(--center-btn-size) !important;
     margin: 0 auto !important;
 }
 
-/* 🌟 SMARTE WEICHE: Verschiebt das Menü im Dashboard nach oben */
 body.dashboard-active #orbit-wrapper > div.relative {
     transform: translateY(-50px) !important;
 }
 
 
 /* ==========================================
-   7. DASHBOARD INNEN-LAYOUT (Für 250px)
+   7. DASHBOARD INNEN-LAYOUT (Responsiv skaliert)
    ========================================== */
-/* Zieht die Schriften und Buttons im Inneren zusammen, 
-   damit sie perfekt in den neuen 250px Kreis passen! */
 @media (min-width: 768px) {
-    /* View Timer */
     body.dashboard-active #view-timer > div:nth-child(2) { top: 20px !important; }
     body.dashboard-active #view-timer > div:nth-child(3) { top: 110px !important; }
     body.dashboard-active #view-timer > div:nth-child(4) { top: 160px !important; }
     
-    /* View Decision */
     body.dashboard-active #view-decision > div:nth-child(2) { top: 85px !important; } 
     body.dashboard-active #view-decision > div:nth-child(3) { top: 155px !important; } 
     body.dashboard-active #view-decision > button { bottom: 15px !important; } 
     
-    /* View CPR Resume */
     body.dashboard-active #view-cpr-resume > div:nth-child(2) { top: 80px !important; } 
     body.dashboard-active #view-cpr-resume > div:nth-child(3) { top: 155px !important; } 
     
-    /* View Joule */
     body.dashboard-active #view-joule > span:nth-child(1) { top: 30px !important; } 
     body.dashboard-active #view-joule > span:nth-child(3) { bottom: 40px !important; } 
     body.dashboard-active #view-joule > button { bottom: 15px !important; } 
 }
 
-/* Fallback für extrem kleine Handys (Skaliert die Inhalte proportional) */
 @media (max-width: 767px) {
-    body.dashboard-active #view-timer > div:nth-child(2) { top: 10px !important; transform: scale(0.85); transform-origin: top center; }
-    body.dashboard-active #view-timer > div:nth-child(3) { top: 85px !important; transform: scale(0.9); }
-    body.dashboard-active #view-timer > div:nth-child(4) { top: 125px !important; transform: scale(0.9); }
+    /* 🌟 FIX: Skalierung und Positionierung für Handys (angepasst an 220px!) */
+    body.dashboard-active #view-timer > div:nth-child(2) { top: 15px !important; transform: scale(0.9); transform-origin: top center; }
+    body.dashboard-active #view-timer > div:nth-child(3) { top: 95px !important; transform: scale(0.95); }
+    body.dashboard-active #view-timer > div:nth-child(4) { top: 140px !important; transform: scale(0.95); }
     
-    body.dashboard-active #view-decision > div:nth-child(1) { top: 30px !important; transform: scale(0.9); }
-    body.dashboard-active #view-decision > div:nth-child(2) { top: 65px !important; transform: scale(0.85); }
-    body.dashboard-active #view-decision > div:nth-child(3) { top: 125px !important; transform: scale(0.85); }
-    body.dashboard-active #view-decision > button { bottom: 10px !important; }
+    body.dashboard-active #view-decision > div:nth-child(1) { top: 40px !important; transform: scale(0.95); }
+    body.dashboard-active #view-decision > div:nth-child(2) { top: 75px !important; transform: scale(0.9); }
+    body.dashboard-active #view-decision > div:nth-child(3) { top: 140px !important; transform: scale(0.9); }
+    body.dashboard-active #view-decision > button { bottom: 12px !important; }
     
-    body.dashboard-active #view-cpr-resume > div:nth-child(1) { top: 30px !important; transform: scale(0.9); }
-    body.dashboard-active #view-cpr-resume > div:nth-child(2) { top: 60px !important; transform: scale(0.8); }
-    body.dashboard-active #view-cpr-resume > div:nth-child(3) { top: 125px !important; transform: scale(0.85); }
+    body.dashboard-active #view-cpr-resume > div:nth-child(1) { top: 40px !important; transform: scale(0.95); }
+    body.dashboard-active #view-cpr-resume > div:nth-child(2) { top: 70px !important; transform: scale(0.9); }
+    body.dashboard-active #view-cpr-resume > div:nth-child(3) { top: 140px !important; transform: scale(0.9); }
     
-    body.dashboard-active #view-joule > span:nth-child(1) { top: 20px !important; transform: scale(0.9); }
-    body.dashboard-active #view-joule > span:nth-child(3) { bottom: 35px !important; transform: scale(0.9); }
-    body.dashboard-active #view-joule > button { bottom: 10px !important; }
+    body.dashboard-active #view-joule > span:nth-child(1) { top: 25px !important; transform: scale(0.95); }
+    body.dashboard-active #view-joule > span:nth-child(3) { bottom: 40px !important; transform: scale(0.95); }
+    body.dashboard-active #view-joule > button { bottom: 12px !important; }
 }
