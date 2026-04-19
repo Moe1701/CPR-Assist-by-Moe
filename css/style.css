@@ -21,7 +21,8 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     --orbit-radius: 145px;
     --main-size: 85px;
     --main-x: 105px;
-    --main-y: 200px;
+    /* 🌟 FIX: +50px Ausgleich, damit Atemweg/CPR unten bleiben! (War 200px) */
+    --main-y: 250px; 
 }
 
 @media (min-width: 768px) {
@@ -31,7 +32,8 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
         --orbit-radius: 175px;
         --main-size: 100px;
         --main-x: 115px;
-        --main-y: 230px;
+        /* 🌟 FIX: +50px Ausgleich, damit Atemweg/CPR unten bleiben! (War 230px) */
+        --main-y: 280px; 
     }
 }
 
@@ -120,11 +122,8 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
 }
 
 /* ==========================================
-   6. MASTER-ZENTRIERUNG (Der perfekte Nullpunkt)
+   6. MASTER-ZENTRIERUNG & VERSCHIEBUNG
    ========================================== */
-/* Zwingt das System, den Header und die Top-Stats zu respektieren.
-   Ignoriert alte Tailwind-Margins (wie mb-[140px]) aus der ui.js! 
-*/
 #orbit-wrapper {
     position: absolute !important;
     top: 0 !important;
@@ -135,7 +134,7 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     padding: 0 !important;
 }
 
-/* Eliminiert die alten hardcodierten Y-Verschiebungen aus der index.html */
+/* 🌟 FIX: Zieht das gesamte Orbit-System (Hauptbutton + kleine Satelliten) um exakt 50px nach oben! */
 #orbit-wrapper > div.relative {
-    transform: translateY(0) !important;
+    transform: translateY(-50px) !important;
 }
