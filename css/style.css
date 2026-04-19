@@ -18,7 +18,6 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
 :root {
     /* MOBILE FIRST (Handys) */
     --sat-size: 72px;
-    /* 🌟 FIX: Orbit für Handys vergrößert, damit Satelliten nicht überlappen */
     --orbit-radius: 170px; 
     --main-size: 85px;
     --main-x: 105px;
@@ -30,20 +29,12 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     :root {
         /* iPAD & TABLET (Mehr Platz) */
         --sat-size: 90px;
-        /* 🌟 FIX: Orbit für iPad von 175px auf 215px vergrößert! */
         --orbit-radius: 215px; 
         --main-size: 100px;
         --main-x: 115px;
         --main-y: 280px; 
         --center-btn-size: 230px;
     }
-}
-
-/* Zwingt den Hauptbutton auf das exakte Maß (überschreibt Tailwind) */
-#main-btn-area {
-    width: var(--center-btn-size) !important;
-    height: var(--center-btn-size) !important;
-    margin: 0 auto !important;
 }
 
 .orbit-path { 
@@ -133,8 +124,9 @@ body.debug-mode #orbit-wrapper > div::before {
 }
 
 /* ==========================================
-   6. MASTER-ZENTRIERUNG & VERSCHIEBUNG
+   6. MASTER-ZENTRIERUNG & SMARTE WEICHE
    ========================================== */
+/* Der Wrapper kleidet immer exakt den Platz bis zum Bildschirmrand aus */
 #orbit-wrapper {
     position: absolute !important;
     top: 0 !important;
@@ -145,7 +137,14 @@ body.debug-mode #orbit-wrapper > div::before {
     padding: 0 !important;
 }
 
-/* Zieht das gesamte Orbit-System (Hauptbutton + kleine Satelliten) um exakt 50px nach oben! */
-#orbit-wrapper > div.relative {
+/* 🌟 SMARTE WEICHE: Zwingt den Button NUR im Dashboard auf 230px! (Onboarding bleibt riesig) */
+body.dashboard-active #main-btn-area {
+    width: var(--center-btn-size) !important;
+    height: var(--center-btn-size) !important;
+    margin: 0 auto !important;
+}
+
+/* 🌟 SMARTE WEICHE: Zieht das Orbit-System NUR im Dashboard um 50px nach oben! */
+body.dashboard-active #orbit-wrapper > div.relative {
     transform: translateY(-50px) !important;
 }
