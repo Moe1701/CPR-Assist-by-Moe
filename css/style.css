@@ -18,11 +18,11 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
 :root {
     /* MOBILE FIRST (Handys) */
     --sat-size: 72px;
-    --orbit-radius: 145px;
+    /* 🌟 FIX: Orbit für Handys vergrößert, damit Satelliten nicht überlappen */
+    --orbit-radius: 170px; 
     --main-size: 85px;
     --main-x: 105px;
     --main-y: 250px; 
-    /* 🌟 NEU: Maß des zentralen Buttons für Handys */
     --center-btn-size: 200px;
 }
 
@@ -30,16 +30,16 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     :root {
         /* iPAD & TABLET (Mehr Platz) */
         --sat-size: 90px;
-        --orbit-radius: 175px;
+        /* 🌟 FIX: Orbit für iPad von 175px auf 215px vergrößert! */
+        --orbit-radius: 215px; 
         --main-size: 100px;
         --main-x: 115px;
         --main-y: 280px; 
-        /* 🌟 NEU: Exakt 230px Außendurchmesser für das iPad! */
         --center-btn-size: 230px;
     }
 }
 
-/* 🌟 FIX: Zwingt den Hauptbutton auf das exakte Maß (überschreibt Tailwind) */
+/* Zwingt den Hauptbutton auf das exakte Maß (überschreibt Tailwind) */
 #main-btn-area {
     width: var(--center-btn-size) !important;
     height: var(--center-btn-size) !important;
