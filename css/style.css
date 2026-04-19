@@ -22,8 +22,8 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     --main-size: 85px;
     --main-x: 110px;
     --main-y: 250px; 
-    /* 🌟 WUNSCH: Hauptbutton auf dem Handy exakt 225px! */
-    --center-btn-size: 225px;
+    /* 🌟 TEST: Hauptbutton auf dem Handy auf massive 235px skaliert! */
+    --center-btn-size: 235px;
 }
 
 @media (min-width: 768px) {
