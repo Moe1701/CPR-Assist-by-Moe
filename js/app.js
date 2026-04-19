@@ -1,7 +1,8 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
- * - UX FIX: Das Fadenkreuz-Messwerkzeug ist direkt hier integriert (Kein HTML-Edit nötig!)
+ * - UX FIX: Onboarding behält seine Größe, Dashboard schaltet autark um!
+ * - GRID: Messwerkzeug im Settings-Menü schaltbar (Kein HTML-Edit nötig!)
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -114,6 +115,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function activateDashboard(resetTimer = false) {
+        // 🌟 UX WEICHE: Das Dashboard-Layout (Größe/Verschiebung) aktivieren!
+        document.body.classList.add('dashboard-active');
+
         const sats = document.getElementById('satellites'); if (sats) sats.classList.remove('hidden');
         ['btn-airway', 'btn-cpr'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('opacity-0', 'pointer-events-none'); });
         if (UI && typeof UI.recalcMeds === 'function') UI.recalcMeds();
@@ -727,6 +731,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if(AppState.isRunning === false) { document.getElementById('debriefing-modal')?.classList.replace('hidden', 'flex'); } 
                 }
             } else if (AppState.state !== 'IDLE' && AppState.state.indexOf('OB_') !== 0) {
+                // 🌟 UX WEICHE: Wenn eine Session (im Dashboard-Modus) wiederhergestellt wird
+                document.body.classList.add('dashboard-active');
+                
                 document.getElementById('top-stats-container')?.classList.remove('hidden'); 
                 document.getElementById('satellites')?.classList.remove('hidden');
                 ['btn-airway', 'btn-cpr'].forEach(id => { document.getElementById(id)?.classList.remove('opacity-0', 'pointer-events-none'); });
@@ -802,7 +809,6 @@ document.addEventListener('DOMContentLoaded', function() {
 (function() {
     let isDebugActive = false;
 
-    // Fadenkreuz Canvas anlegen (startet unsichtbar)
     const canvas = document.createElement('canvas');
     canvas.id = 'debug-canvas';
     canvas.style.position = 'fixed';
@@ -812,7 +818,7 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas.style.height = '100vh';
     canvas.style.zIndex = '999999';
     canvas.style.pointerEvents = 'none'; 
-    canvas.style.display = 'none'; // START: AUS
+    canvas.style.display = 'none'; 
     document.body.appendChild(canvas);
 
     function drawGrid() {
@@ -867,7 +873,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('resize', drawGrid);
     setInterval(drawGrid, 500);
 
-    // 🌟 INJECTION: Button autark ins Settings-Menü schieben
     setTimeout(() => {
         const resetBtn = document.getElementById('btn-hard-reset');
         if (resetBtn) {
