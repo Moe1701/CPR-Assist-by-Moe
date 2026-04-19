@@ -21,7 +21,6 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     --orbit-radius: 145px;
     --main-size: 85px;
     --main-x: 105px;
-    /* 🌟 FIX: +50px Ausgleich, damit Atemweg/CPR unten bleiben! (War 200px) */
     --main-y: 250px; 
 }
 
@@ -32,7 +31,6 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
         --orbit-radius: 175px;
         --main-size: 100px;
         --main-x: 115px;
-        /* 🌟 FIX: +50px Ausgleich, damit Atemweg/CPR unten bleiben! (War 230px) */
         --main-y: 280px; 
     }
 }
@@ -105,16 +103,18 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
 @keyframes cprWarn { 0% { background-color: white; } 50% { background-color: #fee2e2; box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); } 100% { background-color: white; } }
 
 /* ==========================================
-   5. UI/UX DEBUG-MODUS (NUR BOXEN & ORBIT)
+   5. UI/UX DEBUG-MODUS (NUR AKTIV WENN EINGESCHALTET)
    ========================================== */
-.satellite-btn, #btn-airway, #btn-cpr {
+body.debug-mode .satellite-btn, 
+body.debug-mode #btn-airway, 
+body.debug-mode #btn-cpr {
     outline: 2px solid rgba(0, 255, 0, 0.9) !important;
     background-color: rgba(0, 255, 0, 0.15) !important;
 }
-#main-btn-area {
+body.debug-mode #main-btn-area {
     outline: 2px solid rgba(255, 0, 0, 0.9) !important;
 }
-#orbit-wrapper > div::before {
+body.debug-mode #orbit-wrapper > div::before {
     content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     width: calc(var(--orbit-radius) * 2); height: calc(var(--orbit-radius) * 2);
     border: 3px dashed rgba(0, 100, 255, 0.9) !important; border-radius: 50%;
@@ -134,7 +134,7 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     padding: 0 !important;
 }
 
-/* 🌟 FIX: Zieht das gesamte Orbit-System (Hauptbutton + kleine Satelliten) um exakt 50px nach oben! */
+/* Zieht das gesamte Orbit-System (Hauptbutton + kleine Satelliten) um exakt 50px nach oben! */
 #orbit-wrapper > div.relative {
     transform: translateY(-50px) !important;
 }
