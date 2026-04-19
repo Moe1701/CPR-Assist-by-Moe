@@ -2,8 +2,8 @@ window.CPR = window.CPR || {};
 
 /**
  * CPR Assist - Autonome Lunge für den KONT Modus
- * FIX: Rechnet Background-Frames absolut sicher ab. CSS-Styles nutzen nun 
- * brachiales, natives DOM-Manipulieren gegen jeden Tailwind-Konflikt!
+ * FIX: Zuckende Animation repariert! CSS-Transitions werden für die JS-Animation deaktiviert.
+ * FIX: Icon-Farben nutzen stabiles remove/add statt replace.
  */
 window.CPR.AirwayTimer = (function() {
     let rafId = null;
@@ -22,8 +22,6 @@ window.CPR.AirwayTimer = (function() {
         const now = Date.now();
         let elapsed = now - cycleStartTime;
 
-        // 🌟 CHIRURGISCHER SCHNITT: Mathe absichern!
-        // Zyklus abgelaufen -> Neustart. WICHTIG: elapsed auf 0 zwingen!
         if (elapsed >= cycleDuration) {
             cycleStartTime = now;
             elapsed = 0; 
@@ -41,7 +39,6 @@ window.CPR.AirwayTimer = (function() {
             // ==========================================
             const remainingToVent = Math.ceil((fillDuration - elapsed) / 1000);
             
-            // Natives CSS für Badge (verhindert das Zerstören des Layouts)
             if (badge) {
                 badge.style.display = 'flex'; 
                 badge.innerText = remainingToVent;
@@ -62,7 +59,10 @@ window.CPR.AirwayTimer = (function() {
                 glowBg.style.boxShadow = 'none';
             }
             
-            if (awIcon) awIcon.classList.replace('text-cyan-500', 'text-slate-400');
+            if (awIcon) {
+                awIcon.classList.remove('text-cyan-500');
+                awIcon.classList.add('text-slate-400');
+            }
             if (awLabel) {
                 awLabel.innerText = window.CPR.Globals.tempAirwayType || "Atemweg";
                 awLabel.classList.remove('text-cyan-600', 'animate-pulse');
@@ -70,7 +70,7 @@ window.CPR.AirwayTimer = (function() {
 
         } else {
             // ==========================================
-            // 2. BEATMUNGS-PHASE (Squeeze & Sound)
+            // 2. BEATMUNGS-PHASE (Der optische "Squeeze" & Sound)
             // ==========================================
             const ventElapsed = elapsed - fillDuration;
             
@@ -92,9 +92,8 @@ window.CPR.AirwayTimer = (function() {
             }
 
             if (glowBg) {
-                // 🌟 CHIRURGISCHER SCHNITT: Negativen Crash absichern 🌟
                 let fadeOut = 1 - (ventElapsed / ventDuration); 
-                if (fadeOut < 0) fadeOut = 0; // Verhindert CSS-Scale Implosion!
+                if (fadeOut < 0) fadeOut = 0; 
                 
                 glowBg.style.opacity = (0.3 + (0.7 * fadeOut)).toString(); 
                 glowBg.style.transform = `scale(${1.05 + (0.1 * fadeOut)})`; 
@@ -102,7 +101,10 @@ window.CPR.AirwayTimer = (function() {
                 glowBg.style.boxShadow = `0 0 ${40 * fadeOut}px rgba(6,182,212,${0.8 * fadeOut})`;
             }
             
-            if (awIcon) awIcon.classList.replace('text-slate-400', 'text-cyan-500');
+            if (awIcon) {
+                awIcon.classList.remove('text-slate-400');
+                awIcon.classList.add('text-cyan-500');
+            }
             if (awLabel) {
                 awLabel.innerText = "BEATMEN";
                 awLabel.classList.add('text-cyan-600', 'animate-pulse');
@@ -118,16 +120,18 @@ window.CPR.AirwayTimer = (function() {
 
             const isPedi = window.CPR.AppState && window.CPR.AppState.isPediatric;
             if (isPedi) {
-                // KIND: 2.4s pro Zyklus
                 cycleDuration = 2400;
                 fillDuration = 1400; 
                 ventDuration = 1000; 
             } else {
-                // ERW: 6.0s pro Zyklus
                 cycleDuration = 6000;
                 fillDuration = 5000; 
                 ventDuration = 1000; 
             }
+
+            // 🌟 BUGFIX: CSS Transitions töten, sonst zuckt die JS-Animation extrem!
+            const glowBg = document.getElementById('aw-glow-bg');
+            if (glowBg) glowBg.style.transition = 'none';
 
             isRunning = true;
             cycleStartTime = Date.now(); 
@@ -138,7 +142,10 @@ window.CPR.AirwayTimer = (function() {
         
         stop: function() {
             isRunning = false;
-            if (rafId) cancelAnimationFrame(rafId);
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
             
             const glowBg = document.getElementById('aw-glow-bg');
             const awIcon = document.getElementById('aw-icon');
@@ -146,16 +153,20 @@ window.CPR.AirwayTimer = (function() {
             const awLabel = document.getElementById('airway-label');
             
             if (glowBg) {
+                glowBg.style.transition = ''; // Transition wiederherstellen für den 30:2 Modus
                 glowBg.style.opacity = '0';
                 glowBg.style.transform = 'scale(1)';
                 glowBg.style.boxShadow = 'none';
             }
-            if (awIcon) awIcon.classList.replace('text-cyan-500', 'text-slate-400');
+            if (awIcon) {
+                awIcon.classList.remove('text-cyan-500');
+                awIcon.classList.add('text-slate-400');
+            }
             
             if (badge) {
-                badge.style.display = 'none'; // Gnadenlos verstecken!
+                badge.style.display = 'none'; 
                 badge.classList.remove('bg-amber-500', 'border-amber-100', 'animate-pulse', 'bg-[#E3000F]');
-                badge.classList.add('bg-slate-800', 'border-white');
+                badge.classList.add('bg-slate-800', 'border-white', 'hidden');
             }
             
             if (awLabel) {
