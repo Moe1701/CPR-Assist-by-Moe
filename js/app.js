@@ -2,6 +2,7 @@
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
  * - FIX: "Geister-Lunge" Bug behoben! Airway-Timer wird beim Wechsel auf 30:2 nun sauber getötet.
+ * - FIX: Badge-Anzeige im 30:2 Modus nutzt zwingende Inline-Styles gegen CSS-Konflikte.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -154,8 +155,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const remainingComps = limit - AppState.compressionCount;
             const badgeAw = document.getElementById('airway-countdown-badge');
 
+            // 🌟 CHIRURGISCHER SCHNITT: Natives Display-Styling für das Airway-Badge
             if (remainingComps <= 5 && remainingComps > 0) {
                 if (badgeAw) {
+                    badgeAw.style.display = 'flex'; // Zwingend sichtbar machen!
                     badgeAw.innerText = remainingComps;
                     badgeAw.classList.remove('hidden', 'bg-slate-800', 'border-white');
                     badgeAw.classList.add('bg-amber-500', 'border-amber-100', 'animate-pulse');
@@ -163,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (remainingComps <= 3 && window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
             } else {
                 if (badgeAw) {
+                    badgeAw.style.display = 'none'; // Zwingend verstecken!
                     badgeAw.classList.add('hidden');
                     badgeAw.classList.remove('bg-amber-500', 'border-amber-100', 'animate-pulse');
                     badgeAw.classList.add('bg-slate-800', 'border-white');
