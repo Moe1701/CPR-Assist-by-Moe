@@ -1,7 +1,7 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
- * - UX FIX: Das temporäre Fadenkreuz-Messwerkzeug ist direkt hier integriert (Kein HTML-Edit nötig!)
+ * - UX FIX: Das Fadenkreuz-Messwerkzeug ist direkt hier integriert (Kein HTML-Edit nötig!)
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -797,83 +797,108 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // =========================================================================
-// UI/UX DEBUG MODUS (Fadenkreuz & Cache-Buster) - VOLLAUTOMATISCH INTEGRIERT
+// UI/UX DEBUG MODUS (Fadenkreuz & Injection-Logik) - 100% AUTARK
 // =========================================================================
 (function() {
-    // 1. Zwingt das iPad sofort die NEUE style.css zu laden! (Kein Cache Problem mehr)
-    const links = document.querySelectorAll('link[rel="stylesheet"]');
-    links.forEach(l => {
-        if(l.href.includes('style.css')) {
-            l.href = l.href.split('?')[0] + '?v=' + Date.now();
-        }
-    });
+    let isDebugActive = false;
 
-    // 2. Fadenkreuz Canvas anlegen (Sichtbar, sobald die App geladen ist)
+    // Fadenkreuz Canvas anlegen (startet unsichtbar)
+    const canvas = document.createElement('canvas');
+    canvas.id = 'debug-canvas';
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    canvas.style.zIndex = '999999';
+    canvas.style.pointerEvents = 'none'; 
+    canvas.style.display = 'none'; // START: AUS
+    document.body.appendChild(canvas);
+
+    function drawGrid() {
+        if (!isDebugActive) return;
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const topStats = document.getElementById('top-stats-container');
+        const header = document.querySelector('header');
+        let topY = header ? header.getBoundingClientRect().bottom : 0;
+        if (topStats && !topStats.classList.contains('hidden')) {
+            topY = topStats.getBoundingClientRect().bottom;
+        }
+
+        const bottomY = window.innerHeight;
+        const originY = topY + ((bottomY - topY) / 2); 
+        const originX = window.innerWidth / 2; 
+
+        ctx.strokeStyle = 'rgba(255, 0, 255, 0.6)';
+        ctx.fillStyle = 'rgba(255, 0, 255, 0.9)';
+        ctx.font = 'bold 10px monospace';
+        ctx.lineWidth = 1.5;
+
+        ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); ctx.stroke();
+
+        const step = 10;
+        for(let x = originX; x < canvas.width; x += step) {
+            ctx.beginPath(); ctx.moveTo(x, originY - 4); ctx.lineTo(x, originY + 4); ctx.stroke();
+            if((x - originX) % 50 === 0 && x !== originX) ctx.fillText(`+${Math.round(x - originX)}`, x + 2, originY - 8);
+        }
+        for(let x = originX; x > 0; x -= step) {
+            ctx.beginPath(); ctx.moveTo(x, originY - 4); ctx.lineTo(x, originY + 4); ctx.stroke();
+            if((originX - x) % 50 === 0 && x !== originX) ctx.fillText(`-${Math.round(originX - x)}`, x - 25, originY - 8);
+        }
+        for(let y = originY; y < canvas.height; y += step) {
+            ctx.beginPath(); ctx.moveTo(originX - 4, y); ctx.lineTo(originX + 4, y); ctx.stroke();
+            if((y - originY) % 50 === 0 && y !== originY) ctx.fillText(`+${Math.round(y - originY)}`, originX + 8, y + 4);
+        }
+        for(let y = originY; y > 0; y -= step) {
+            ctx.beginPath(); ctx.moveTo(originX - 4, y); ctx.lineTo(originX + 4, y); ctx.stroke();
+            if((originY - y) % 50 === 0 && y !== originY) ctx.fillText(`-${Math.round(originY - y)}`, originX + 8, y + 4);
+        }
+        
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillText("0,0", originX + 8, originY - 8);
+    }
+
+    window.addEventListener('resize', drawGrid);
+    setInterval(drawGrid, 500);
+
+    // 🌟 INJECTION: Button autark ins Settings-Menü schieben
     setTimeout(() => {
-        const canvas = document.createElement('canvas');
-        canvas.id = 'debug-canvas';
-        canvas.style.position = 'fixed';
-        canvas.style.top = '0';
-        canvas.style.left = '0';
-        canvas.style.width = '100vw';
-        canvas.style.height = '100vh';
-        canvas.style.zIndex = '999999';
-        canvas.style.pointerEvents = 'none'; // Klicks gehen durch das Fadenkreuz hindurch!
-        document.body.appendChild(canvas);
-
-        function drawGrid() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Den exakten Abstand zwischen Top-Stats und Bildschirm-Boden messen
-            const topStats = document.getElementById('top-stats-container');
-            const header = document.querySelector('header');
-            let topY = header ? header.getBoundingClientRect().bottom : 0;
-            if (topStats && !topStats.classList.contains('hidden')) {
-                topY = topStats.getBoundingClientRect().bottom;
-            }
-
-            const bottomY = window.innerHeight;
-            const originY = topY + ((bottomY - topY) / 2); // Exakte Y-Mitte berechnen
-            const originX = window.innerWidth / 2; // Exakte X-Mitte berechnen
-
-            ctx.strokeStyle = 'rgba(255, 0, 255, 0.6)';
-            ctx.fillStyle = 'rgba(255, 0, 255, 0.9)';
-            ctx.font = 'bold 10px monospace';
-            ctx.lineWidth = 1.5;
-
-            // X- und Y-Achse zeichnen
-            ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); ctx.stroke();
-
-            const step = 10;
-            // X-Achse beschriften
-            for(let x = originX; x < canvas.width; x += step) {
-                ctx.beginPath(); ctx.moveTo(x, originY - 4); ctx.lineTo(x, originY + 4); ctx.stroke();
-                if((x - originX) % 50 === 0 && x !== originX) ctx.fillText(`+${Math.round(x - originX)}`, x + 2, originY - 8);
-            }
-            for(let x = originX; x > 0; x -= step) {
-                ctx.beginPath(); ctx.moveTo(x, originY - 4); ctx.lineTo(x, originY + 4); ctx.stroke();
-                if((originX - x) % 50 === 0 && x !== originX) ctx.fillText(`-${Math.round(originX - x)}`, x - 25, originY - 8);
-            }
-
-            // Y-Achse beschriften
-            for(let y = originY; y < canvas.height; y += step) {
-                ctx.beginPath(); ctx.moveTo(originX - 4, y); ctx.lineTo(originX + 4, y); ctx.stroke();
-                if((y - originY) % 50 === 0 && y !== originY) ctx.fillText(`+${Math.round(y - originY)}`, originX + 8, y + 4);
-            }
-            for(let y = originY; y > 0; y -= step) {
-                ctx.beginPath(); ctx.moveTo(originX - 4, y); ctx.lineTo(originX + 4, y); ctx.stroke();
-                if((originY - y) % 50 === 0 && y !== originY) ctx.fillText(`-${Math.round(originY - y)}`, originX + 8, y + 4);
-            }
+        const resetBtn = document.getElementById('btn-hard-reset');
+        if (resetBtn) {
+            const toggleBtn = document.createElement('button');
+            toggleBtn.id = 'btn-toggle-debug';
+            toggleBtn.className = 'w-full bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-sm border border-slate-300 active:scale-95 flex items-center justify-center gap-2 mb-4 transition-all';
+            toggleBtn.innerHTML = '<i class="fa-solid fa-ruler-combined text-lg"></i> Layout Grid (An / Aus)';
             
-            ctx.fillStyle = 'rgba(0,0,0,0.8)';
-            ctx.fillText("0,0", originX + 8, originY - 8);
-        }
+            toggleBtn.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if(window.CPR && window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
+                
+                isDebugActive = !isDebugActive;
+                
+                if (isDebugActive) {
+                    canvas.style.display = 'block';
+                    document.body.classList.add('debug-mode'); 
+                    toggleBtn.classList.replace('bg-slate-100', 'bg-indigo-100');
+                    toggleBtn.classList.replace('text-slate-700', 'text-indigo-700');
+                    toggleBtn.classList.replace('border-slate-300', 'border-indigo-300');
+                    drawGrid();
+                } else {
+                    canvas.style.display = 'none';
+                    document.body.classList.remove('debug-mode'); 
+                    toggleBtn.classList.replace('bg-indigo-100', 'bg-slate-100');
+                    toggleBtn.classList.replace('text-indigo-700', 'text-slate-700');
+                    toggleBtn.classList.replace('border-indigo-300', 'border-slate-300');
+                }
+            });
 
-        window.addEventListener('resize', drawGrid);
-        setInterval(drawGrid, 500); // Aktualisiert das Netz, sobald die Top-Stats auftauchen
-    }, 1000);
+            resetBtn.parentNode.insertBefore(toggleBtn, resetBtn);
+        }
+    }, 1500); 
 })();
