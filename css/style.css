@@ -22,6 +22,8 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     --main-size: 85px;
     --main-x: 105px;
     --main-y: 250px; 
+    /* 🌟 NEU: Maß des zentralen Buttons für Handys */
+    --center-btn-size: 200px;
 }
 
 @media (min-width: 768px) {
@@ -32,7 +34,16 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
         --main-size: 100px;
         --main-x: 115px;
         --main-y: 280px; 
+        /* 🌟 NEU: Exakt 230px Außendurchmesser für das iPad! */
+        --center-btn-size: 230px;
     }
+}
+
+/* 🌟 FIX: Zwingt den Hauptbutton auf das exakte Maß (überschreibt Tailwind) */
+#main-btn-area {
+    width: var(--center-btn-size) !important;
+    height: var(--center-btn-size) !important;
+    margin: 0 auto !important;
 }
 
 .orbit-path { 
