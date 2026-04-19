@@ -1,13 +1,61 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
- * - UX FIX: Onboarding behält seine Größe, Dashboard schaltet autark um!
- * - GRID: Messwerkzeug im Settings-Menü schaltbar (Kein HTML-Edit nötig!)
+ * - UX FIX: Fadenkreuz-Messwerkzeug im Settings-Menü schaltbar!
+ * - UI UPGRADE: Der Dashboard-Button baut sich selbst um und ist voll klickbar!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     const CPR = window.CPR;
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
+
+    // =========================================================
+    // 🌟 GENIALER TRICK: Baut den Timer-Screen puristisch um!
+    // =========================================================
+    function remodelViewTimer() {
+        const vt = document.getElementById('view-timer');
+        if (vt) {
+            // Setzt alle Klassen zurück und macht den Inhalt "durchlässig" für Klicks
+            vt.className = "hidden flex-col items-center justify-center w-full h-full text-center relative pointer-events-none";
+            const shocks = AppState.shockCount || 0;
+            
+            vt.innerHTML = `
+                <!-- Filigrane Rhythmusanalyse Info -->
+                <div class="absolute top-[40px] md:top-[50px] w-full flex items-center justify-center gap-3 opacity-60 pointer-events-none">
+                    <div class="h-[2px] w-4 md:w-6 bg-slate-300 rounded-full"></div>
+                    <span class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] md:tracking-[0.3em]">Analyse</span>
+                    <div class="h-[2px] w-4 md:w-6 bg-slate-300 rounded-full"></div>
+                </div>
+
+                <!-- Der Timer (Filigraner und zentriert) -->
+                <div id="cycle-timer" class="absolute top-[85px] md:top-[100px] w-full text-center font-black text-5xl md:text-6xl text-slate-800 tracking-tighter pointer-events-none" style="font-variant-numeric: tabular-nums;">
+                    02:00
+                </div>
+
+                <!-- Schock Info (Puristisch & Edel) -->
+                <div class="absolute bottom-[35px] md:bottom-[45px] w-full flex items-center justify-center text-xs md:text-sm font-bold text-slate-500 gap-2 pointer-events-none">
+                    <i class="fa-solid fa-bolt text-amber-400"></i>
+                    <span id="rhythm-info-shocks">${shocks}</span>
+                    <span class="text-slate-300">|</span>
+                    <span id="rhythm-info-joule" class="text-[#E3000F]">150 J</span>
+                </div>
+
+                <!-- Warn-Alerts (Zentriert) -->
+                <div id="inner-prepare-alert" class="hidden absolute inset-0 bg-white/95 rounded-full flex-col items-center justify-center z-10 pointer-events-none">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Analyse in</span>
+                    <span id="prepare-time" class="text-4xl font-black text-amber-500">15</span>
+                </div>
+                <div id="inner-precharge-alert" class="hidden absolute inset-0 bg-white/95 rounded-full flex-col items-center justify-center z-10 pointer-events-none">
+                    <span class="text-[10px] font-bold text-[#E3000F] uppercase tracking-widest mb-1 animate-pulse">Defi laden!</span>
+                    <span id="precharge-time" class="text-4xl font-black text-[#E3000F]">05</span>
+                </div>
+            `;
+        }
+    }
+    
+    // Baut das HTML sofort nach dem Laden um
+    remodelViewTimer();
+    // =========================================================
 
     function navHelper(newState, viewId, size) {
         if (newState) { AppState.previousState = AppState.state; AppState.state = newState; }
@@ -115,9 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function activateDashboard(resetTimer = false) {
-        // 🌟 UX WEICHE: Das Dashboard-Layout (Größe/Verschiebung) aktivieren!
         document.body.classList.add('dashboard-active');
-
         const sats = document.getElementById('satellites'); if (sats) sats.classList.remove('hidden');
         ['btn-airway', 'btn-cpr'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('opacity-0', 'pointer-events-none'); });
         if (UI && typeof UI.recalcMeds === 'function') UI.recalcMeds();
@@ -449,6 +495,7 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-breaths-done', (e) => { e.stopPropagation(); Utils.vibrate(40); addLogEntry("5 initiale Beatmungen durchgeführt"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
         addClick('btn-breaths-skipped', (e) => { e.stopPropagation(); Utils.vibrate([30, 50]); addLogEntry("5 initiale Beatmungen übersprungen"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
 
+        // 🌟 UX FIX: Der gesamte zentrale Button wird nun zur Steuer-Matrix!
         addClick('main-btn-area', (e) => {
             if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
             if (Date.now() - (Globals.lastMenuAction || 0) < 500) return;
@@ -464,6 +511,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 activateDashboard(true);
                 updateCprUI();
                 Utils.saveSession();
+            } else if (AppState.state === 'RUNNING') {
+                // 🌟 NEU: Klick auf den großen Kreis löst direkt die Analyse aus!
+                Utils.vibrate([30, 50]); 
+                AppState.isCompressing = false; 
+                navHelper('DECISION', 'view-decision', 'large'); 
+                if (CPR.CPRTimer && typeof CPR.CPRTimer.pause === 'function') CPR.CPRTimer.pause(); 
+                updateCprUI(); 
             }
         });
 
@@ -471,12 +525,6 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation(); Utils.vibrate(30); markMenuAction();
             if (AppState.previousState === 'RUNNING') { navHelper('RUNNING', 'view-timer', 'small'); if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') CPR.CPRTimer.start(true); updateCprUI(); } 
             else { navHelper('OB_ANALYZE', 'view-ob-3', 'large'); }
-        });
-
-        addClick('btn-permanent-analyze', (e) => { 
-            e.stopPropagation(); if (Date.now() - (Globals.lastMenuAction || 0) < 500) return; 
-            Utils.vibrate(50); AppState.isCompressing = false; navHelper('DECISION', 'view-decision', 'large'); 
-            if (CPR.CPRTimer && typeof CPR.CPRTimer.pause === 'function') CPR.CPRTimer.pause(); updateCprUI(); 
         });
 
         addClick('btn-shockable', (e) => { 
@@ -731,7 +779,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     if(AppState.isRunning === false) { document.getElementById('debriefing-modal')?.classList.replace('hidden', 'flex'); } 
                 }
             } else if (AppState.state !== 'IDLE' && AppState.state.indexOf('OB_') !== 0) {
-                // 🌟 UX WEICHE: Wenn eine Session (im Dashboard-Modus) wiederhergestellt wird
                 document.body.classList.add('dashboard-active');
                 
                 document.getElementById('top-stats-container')?.classList.remove('hidden'); 
