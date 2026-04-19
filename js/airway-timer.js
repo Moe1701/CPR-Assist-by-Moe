@@ -4,6 +4,7 @@ window.CPR = window.CPR || {};
  * CPR Assist - Autonome Lunge für den KONT Modus
  * FIX: Zuckende Animation repariert! CSS-Transitions werden für die JS-Animation deaktiviert.
  * FIX: Icon-Farben nutzen stabiles remove/add statt replace.
+ * UX-UPDATE: Der Badge wird während der Beatmungs-Sekunde komplett ausgeblendet (kein "!!" mehr).
  */
 window.CPR.AirwayTimer = (function() {
     let rafId = null;
@@ -84,11 +85,9 @@ window.CPR.AirwayTimer = (function() {
                 hasPlayedSound = true;
             }
             
+            // 🌟 UX-FIX: Badge während der Beatmung komplett ausblenden! 🌟
             if (badge) {
-                badge.style.display = 'flex';
-                badge.innerText = "!!";
-                badge.classList.remove('bg-slate-800', 'bg-amber-500', 'border-white', 'border-amber-100');
-                badge.classList.add('bg-[#E3000F]', 'border-white', 'animate-pulse');
+                badge.style.display = 'none';
             }
 
             if (glowBg) {
@@ -129,7 +128,7 @@ window.CPR.AirwayTimer = (function() {
                 ventDuration = 1000; 
             }
 
-            // 🌟 BUGFIX: CSS Transitions töten, sonst zuckt die JS-Animation extrem!
+            // BUGFIX: CSS Transitions töten, sonst zuckt die JS-Animation extrem!
             const glowBg = document.getElementById('aw-glow-bg');
             if (glowBg) glowBg.style.transition = 'none';
 
