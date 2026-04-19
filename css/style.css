@@ -22,6 +22,7 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     --main-size: 85px;
     --main-x: 110px;
     --main-y: 250px; 
+    /* 🌟 WUNSCH: Hauptbutton auf dem Handy exakt 225px! */
     --center-btn-size: 225px;
 }
 
@@ -146,13 +147,22 @@ body:not(.dashboard-active) #top-stats-container:not(.hidden) + #cpr-interface #
     transform: translateY(-40px) !important;
 }
 
-/* 🌟 SMARTE WEICHE: Dashboard Button Größe UND perfeker Rahmen */
+/* 🌟 SMARTE WEICHE: Dashboard Button Größe, perfekter Rahmen & KLICK-FEEDBACK */
 body.dashboard-active #main-btn-area {
     width: var(--center-btn-size) !important;
     height: var(--center-btn-size) !important;
     margin: 0 auto !important;
-    border: none !important; /* 🌟 FIX: Zerstört den fetten weißen Rahmen! Das Canvas ist jetzt die Grenze! */
-    box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important; /* Weicherer Schatten für den sauberen Rand */
+    border: none !important; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important; 
+    cursor: pointer; /* Zeigt an, dass ALLES klickbar ist */
+    transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
+}
+
+/* 🌟 NEU: Klick-Feedback! Fühlt sich an wie ein echter Hardware-Taster */
+body.dashboard-active #main-btn-area:active {
+    transform: scale(0.97) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
+    filter: brightness(0.97) !important;
 }
 
 /* Verschiebt das Menü im Dashboard nach oben */
@@ -160,15 +170,10 @@ body.dashboard-active #orbit-wrapper > div.relative {
     transform: translateY(-50px) !important;
 }
 
-
 /* ==========================================
-   7. DASHBOARD INNEN-LAYOUT (Responsiv skaliert)
+   7. DASHBOARD INNEN-LAYOUT (Nur für die restlichen Views, view-timer ist jetzt autark!)
    ========================================== */
 @media (min-width: 768px) {
-    body.dashboard-active #view-timer > div:nth-child(2) { top: 20px !important; }
-    body.dashboard-active #view-timer > div:nth-child(3) { top: 110px !important; }
-    body.dashboard-active #view-timer > div:nth-child(4) { top: 160px !important; }
-    
     body.dashboard-active #view-decision > div:nth-child(2) { top: 85px !important; } 
     body.dashboard-active #view-decision > div:nth-child(3) { top: 155px !important; } 
     body.dashboard-active #view-decision > button { bottom: 15px !important; } 
@@ -182,10 +187,6 @@ body.dashboard-active #orbit-wrapper > div.relative {
 }
 
 @media (max-width: 767px) {
-    body.dashboard-active #view-timer > div:nth-child(2) { top: 15px !important; transform: scale(0.95); transform-origin: top center; }
-    body.dashboard-active #view-timer > div:nth-child(3) { top: 95px !important; transform: scale(1); }
-    body.dashboard-active #view-timer > div:nth-child(4) { top: 145px !important; transform: scale(1); }
-    
     body.dashboard-active #view-decision > div:nth-child(1) { top: 40px !important; transform: scale(0.95); }
     body.dashboard-active #view-decision > div:nth-child(2) { top: 80px !important; transform: scale(0.95); }
     body.dashboard-active #view-decision > div:nth-child(3) { top: 145px !important; transform: scale(0.95); }
