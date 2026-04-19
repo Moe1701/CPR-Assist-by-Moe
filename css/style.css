@@ -22,7 +22,6 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     --main-size: 85px;
     --main-x: 110px;
     --main-y: 250px; 
-    /* 🌟 WUNSCH: Hauptbutton auf dem Handy exakt 225px! */
     --center-btn-size: 225px;
 }
 
@@ -142,19 +141,21 @@ body.debug-mode #orbit-wrapper > div::before {
     transform: translateY(0) !important;
 }
 
-/* 🌟 FIX: Wenn Top-Stats sichtbar sind, aber Onboarding noch läuft -> Ziehe den 350px Kreis nach oben! */
+/* Wenn Top-Stats sichtbar sind, aber Onboarding noch läuft -> Ziehe den 350px Kreis nach oben! */
 body:not(.dashboard-active) #top-stats-container:not(.hidden) + #cpr-interface #orbit-wrapper > div.relative {
     transform: translateY(-40px) !important;
 }
 
-/* 🌟 SMARTE WEICHE: Dashboard Button Größe */
+/* 🌟 SMARTE WEICHE: Dashboard Button Größe UND perfeker Rahmen */
 body.dashboard-active #main-btn-area {
     width: var(--center-btn-size) !important;
     height: var(--center-btn-size) !important;
     margin: 0 auto !important;
+    border: none !important; /* 🌟 FIX: Zerstört den fetten weißen Rahmen! Das Canvas ist jetzt die Grenze! */
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important; /* Weicherer Schatten für den sauberen Rand */
 }
 
-/* 🌟 SMARTE WEICHE: Verschiebt das Menü im Dashboard nach oben */
+/* Verschiebt das Menü im Dashboard nach oben */
 body.dashboard-active #orbit-wrapper > div.relative {
     transform: translateY(-50px) !important;
 }
@@ -181,7 +182,6 @@ body.dashboard-active #orbit-wrapper > div.relative {
 }
 
 @media (max-width: 767px) {
-    /* 🌟 FIX: Skalierung und Positionierung für Handys (angepasst an die neuen 225px!) */
     body.dashboard-active #view-timer > div:nth-child(2) { top: 15px !important; transform: scale(0.95); transform-origin: top center; }
     body.dashboard-active #view-timer > div:nth-child(3) { top: 95px !important; transform: scale(1); }
     body.dashboard-active #view-timer > div:nth-child(4) { top: 145px !important; transform: scale(1); }
