@@ -22,7 +22,6 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     --main-size: 85px;
     --main-x: 110px;
     --main-y: 250px; 
-    /* 🌟 TEST: Hauptbutton auf dem Handy auf massive 235px skaliert! */
     --center-btn-size: 235px;
 }
 
@@ -154,11 +153,10 @@ body.dashboard-active #main-btn-area {
     margin: 0 auto !important;
     border: none !important; 
     box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important; 
-    cursor: pointer; /* Zeigt an, dass ALLES klickbar ist */
+    cursor: pointer; 
     transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
 }
 
-/* 🌟 NEU: Klick-Feedback! Fühlt sich an wie ein echter Hardware-Taster */
 body.dashboard-active #main-btn-area:active {
     transform: scale(0.97) !important;
     box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
@@ -171,7 +169,7 @@ body.dashboard-active #orbit-wrapper > div.relative {
 }
 
 /* ==========================================
-   7. DASHBOARD INNEN-LAYOUT (Nur für die restlichen Views, view-timer ist jetzt autark!)
+   7. DASHBOARD INNEN-LAYOUT
    ========================================== */
 @media (min-width: 768px) {
     body.dashboard-active #view-decision > div:nth-child(2) { top: 85px !important; } 
