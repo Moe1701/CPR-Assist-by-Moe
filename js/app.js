@@ -2,7 +2,7 @@
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
  * - UX FIX: Fadenkreuz-Messwerkzeug im Settings-Menü schaltbar!
- * - UI UPGRADE: Flexbox Timer-Design (Verhindert Zeilenumbrüche und Springen!)
+ * - UI UPGRADE: Millimetergenaue Y-Positionen verhindern jedes Herausrutschen!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
 
     // =========================================================
-    // 🌟 FLEXBOX TRICK: Zwingt den Timer-Inhalt in eine perfekte Mitte,
-    // egal wie groß oder klein der Button gerade animiert wird!
+    // 🌟 ABSOLUT-POSITIONIERUNG: Tauscht Schock-Info und Puls Tasten
+    // Alles bleibt zu 100% sicher innerhalb des 230px Kreises!
     // =========================================================
     function remodelViewTimer() {
         const vt = document.getElementById('view-timer');
@@ -20,31 +20,32 @@ document.addEventListener('DOMContentLoaded', function() {
             const shocks = AppState.shockCount || 0;
             
             vt.innerHTML = `
-                <!-- Der zentrale Container hält alles zusammen -->
-                <div class="flex flex-col items-center justify-center w-full h-full pb-1">
-                    <!-- whitespace-nowrap verhindert das hässliche Umbrechen! -->
-                    <span class="text-[10px] md:text-[12px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap opacity-80 mb-1">Bei Analyse drücken</span>
-                    
-                    <div id="cycle-timer" class="text-center font-black text-[64px] md:text-[72px] leading-none text-slate-800 tracking-tighter pointer-events-none my-1" style="font-variant-numeric: tabular-nums;">
-                        02:00
-                    </div>
-
-                    <div class="flex items-center justify-center text-sm md:text-base font-bold text-slate-600 gap-2 pointer-events-none mt-1">
-                        <i class="fa-solid fa-bolt text-amber-400"></i>
-                        <span id="rhythm-info-shocks">${shocks}</span>
-                        <span class="text-slate-300 mx-1">|</span>
-                        <span id="rhythm-info-joule" class="text-[#E3000F]">150 J</span>
-                    </div>
+                <!-- 1. Top: Bei Analyse drücken -->
+                <div class="absolute top-[35px] md:top-[40px] left-0 w-full flex justify-center items-center pointer-events-none">
+                    <span class="text-[10px] md:text-[12px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap opacity-80">Bei Analyse drücken</span>
                 </div>
 
-                <!-- Warn-Alerts (Überlagern elegant den unteren Text) -->
-                <div id="inner-prepare-alert" class="hidden absolute bottom-[12%] w-full items-center justify-center gap-2 z-10 pointer-events-none bg-white py-1">
+                <!-- 2. Mitte: Der Timer -->
+                <div id="cycle-timer" class="absolute top-[70px] md:top-[80px] left-0 w-full text-center font-black text-[64px] md:text-[72px] leading-none text-slate-800 tracking-tighter pointer-events-none" style="font-variant-numeric: tabular-nums;">
+                    02:00
+                </div>
+
+                <!-- 3. Unter dem Timer: Die Puls-Tasten Warnung (Völlig sicher in der Mitte) -->
+                <div id="inner-prepare-alert" class="hidden absolute top-[145px] md:top-[160px] left-0 w-full flex items-center justify-center gap-1.5 z-10 pointer-events-none">
                     <div class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></div>
                     <span class="text-xs md:text-sm font-bold text-amber-500 uppercase tracking-widest whitespace-nowrap">Puls tasten in <span id="prepare-time">15</span>s</span>
                 </div>
-                <div id="inner-precharge-alert" class="hidden absolute bottom-[12%] w-full items-center justify-center gap-2 z-10 pointer-events-none bg-white py-1">
+                <div id="inner-precharge-alert" class="hidden absolute top-[145px] md:top-[160px] left-0 w-full flex items-center justify-center gap-1.5 z-10 pointer-events-none">
                     <div class="h-2 w-2 rounded-full bg-[#E3000F] animate-ping"></div>
                     <span class="text-xs md:text-sm font-bold text-[#E3000F] uppercase tracking-widest whitespace-nowrap">Defi laden: <span id="precharge-time">05</span>s</span>
+                </div>
+
+                <!-- 4. Unten: Schock Info (Sicher vor dem Ring verankert) -->
+                <div class="absolute bottom-[25px] md:bottom-[30px] left-0 w-full flex items-center justify-center text-xs md:text-sm font-bold text-slate-600 gap-2 pointer-events-none">
+                    <i class="fa-solid fa-bolt text-amber-400"></i>
+                    <span id="rhythm-info-shocks">${shocks}</span>
+                    <span class="text-slate-300 mx-1">|</span>
+                    <span id="rhythm-info-joule" class="text-[#E3000F]">150 J</span>
                 </div>
             `;
         }
