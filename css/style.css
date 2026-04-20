@@ -16,13 +16,13 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
    3. RESPONSIVES KREIS-MENÜ (Variablen)
    ========================================== */
 :root {
-    /* MOBILE FIRST (Handys) */
-    --sat-size: 72px;
-    --orbit-radius: 160px; 
+    /* MOBILE FIRST (Handys) - GOLDENER SCHNITT! */
+    --sat-size: 76px;         /* 🌟 Größere Trefferfläche für Satelliten */
+    --orbit-radius: 163px;    /* 🌟 Edge-to-Edge auf 360px Displays */
     --main-size: 85px;
     --main-x: 110px;
     --main-y: 250px; 
-    --center-btn-size: 230px;
+    --center-btn-size: 240px; /* 🌟 Der wuchtige 240px Zentral-Button! */
 }
 
 @media (min-width: 768px) {
@@ -136,7 +136,7 @@ body.debug-mode #orbit-wrapper > div::before {
     padding: 0 !important;
 }
 
-/* 🌟 BASIS: Butterweiche Animationen für den Größen- und Positionswechsel */
+/* BASIS: Butterweiche Animationen für den Größen- und Positionswechsel */
 #main-btn-area {
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
 }
@@ -150,7 +150,7 @@ body:not(.dashboard-active) #top-stats-container:not(.hidden) + #cpr-interface #
     transform: translateY(-40px) !important;
 }
 
-/* 🌟 DESIGN: Gilt für den ganzen Einsatz (Kein weißer Rand, weicher Schatten) */
+/* DESIGN: Gilt für den ganzen Einsatz (Kein weißer Rand, weicher Schatten) */
 body.dashboard-active #main-btn-area {
     margin: 0 auto !important;
     border: none !important; 
@@ -165,7 +165,7 @@ body.dashboard-active #main-btn-area:active {
     filter: brightness(0.97) !important;
 }
 
-/* 🌟 DYNAMIK: Nur wenn der Timer läuft (cpr-mode-small), schrumpft der Button und gleitet nach oben! */
+/* DYNAMIK: Nur wenn der Timer läuft (cpr-mode-small), schrumpft der Button und gleitet nach oben! */
 body.cpr-mode-small #main-btn-area {
     width: var(--center-btn-size) !important;
     height: var(--center-btn-size) !important;
