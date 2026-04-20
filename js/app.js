@@ -3,6 +3,7 @@
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
  * - UX FIX: Fadenkreuz-Messwerkzeug im Settings-Menü schaltbar!
  * - UI UPGRADE: Der Dashboard-Button baut sich selbst um und integriert Inline-Alerts!
+ * - ANIMATION: Der Button "atmet" jetzt zwischen Groß und Klein!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -10,27 +11,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
 
     // =========================================================
-    // 🌟 GENIALER TRICK: Baut den Timer-Screen puristisch um!
+    // 🌟 Baut den Timer-Screen puristisch um!
     // =========================================================
     function remodelViewTimer() {
         const vt = document.getElementById('view-timer');
         if (vt) {
-            // Setzt alle Klassen zurück und macht den Inhalt "durchlässig" für Klicks
             vt.className = "hidden flex-col items-center justify-center w-full h-full text-center relative pointer-events-none";
             const shocks = AppState.shockCount || 0;
             
             vt.innerHTML = `
-                <!-- Klare, lesbare Analyse Info -->
                 <div class="absolute top-[35px] md:top-[45px] w-full flex items-center justify-center pointer-events-none">
                     <span class="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-widest">Bei Analyse drücken</span>
                 </div>
-
-                <!-- Der Haupt-Timer (Riesig und dominant) -->
                 <div id="cycle-timer" class="absolute top-[70px] md:top-[85px] w-full text-center font-black text-[64px] md:text-[76px] leading-none text-slate-800 tracking-tighter pointer-events-none" style="font-variant-numeric: tabular-nums;">
                     02:00
                 </div>
-
-                <!-- Warn-Alerts (Integriert als saubere Text-Zeile UNTER dem Timer) -->
                 <div id="inner-prepare-alert" class="hidden absolute top-[150px] md:top-[175px] w-full items-center justify-center gap-2 z-10 pointer-events-none">
                     <div class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></div>
                     <span class="text-xs md:text-sm font-bold text-amber-500 uppercase tracking-widest">Puls tasten in <span id="prepare-time">15</span>s</span>
@@ -39,8 +34,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="h-2 w-2 rounded-full bg-[#E3000F] animate-ping"></div>
                     <span class="text-xs md:text-sm font-bold text-[#E3000F] uppercase tracking-widest">Defi laden: <span id="precharge-time">05</span>s</span>
                 </div>
-
-                <!-- Schock Info (Kräftiger und puristisch ganz unten) -->
                 <div class="absolute bottom-[28px] md:bottom-[35px] w-full flex items-center justify-center text-sm md:text-base font-bold text-slate-600 gap-2 pointer-events-none">
                     <i class="fa-solid fa-bolt text-amber-400"></i>
                     <span id="rhythm-info-shocks">${shocks}</span>
@@ -50,15 +43,21 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         }
     }
-    
-    // Baut das HTML sofort nach dem Laden um
     remodelViewTimer();
     // =========================================================
 
+    // 🌟 NEU: Diese Funktion steuert nun fließend die CSS-Klassen für Groß/Klein
     function navHelper(newState, viewId, size) {
         if (newState) { AppState.previousState = AppState.state; AppState.state = newState; }
         if (UI && typeof UI.switchView === 'function') { UI.switchView(viewId); }
         if (UI && typeof UI.setCenterSize === 'function' && size) { UI.setCenterSize(size); }
+
+        // Schaltet butterweich zwischen 235px (small) und 350px (large) um!
+        if (size === 'small') {
+            document.body.classList.add('cpr-mode-small');
+        } else if (size === 'large') {
+            document.body.classList.remove('cpr-mode-small');
+        }
     }
 
     function addClick(id, handler) { 
@@ -493,7 +492,6 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-breaths-done', (e) => { e.stopPropagation(); Utils.vibrate(40); addLogEntry("5 initiale Beatmungen durchgeführt"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
         addClick('btn-breaths-skipped', (e) => { e.stopPropagation(); Utils.vibrate([30, 50]); addLogEntry("5 initiale Beatmungen übersprungen"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
 
-        // 🌟 UX FIX: Der gesamte zentrale Button löst nun immer das Richtige aus!
         addClick('main-btn-area', (e) => {
             if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
             if (Date.now() - (Globals.lastMenuAction || 0) < 500) return;
