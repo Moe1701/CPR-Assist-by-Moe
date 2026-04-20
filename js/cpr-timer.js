@@ -2,9 +2,9 @@ window.CPR = window.CPR || {};
 
 window.CPR.CPRTimer = (function() {
     let interval = null;
-    let accumulatedTime = 0; // In Millisekunden
+    let accumulatedTime = 0; 
     let startTime = 0;
-    const total = 120; // 2 Minuten Zyklus
+    const total = 120; 
     let isRunning = false;
 
     // Zeichnet nativ auf das Canvas-Element
@@ -15,15 +15,15 @@ window.CPR.CPRTimer = (function() {
         const width = canvas.width;
         const height = canvas.height;
         
-        // 🌟 UX FIX: Echte physische "Schiene" (Track & Groove)
-        const trackWidth = 24;      // Der äußere graue Ring (Schön breit)
-        const progressWidth = 14;   // Die Cyan-Füllung (Schmaler, liegt genau innen)
+        // 🌟 UX FIX: Dünnere 16px Schiene, 12px Füllung!
+        const trackWidth = 16;      
+        const progressWidth = 12;   
         const center = width / 2;
-        const radius = center - (trackWidth / 2); // Schließt exakt mit der Außenkante ab
+        const radius = center - (trackWidth / 2); 
 
         ctx.clearRect(0, 0, width, height);
 
-        // 1. Zeichne die breite graue "Schiene" (Track) als äußere Begrenzung
+        // 1. Zeichne die graue "Schiene" (Track) 
         ctx.beginPath();
         ctx.arc(center, center, radius, 0, 2 * Math.PI, false);
         ctx.lineWidth = trackWidth;
