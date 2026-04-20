@@ -107,24 +107,46 @@ body.debug-mode #main-btn-area { outline: 2px solid rgba(255, 0, 0, 0.9) !import
 body.debug-mode #orbit-wrapper > div::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: calc(var(--orbit-radius) * 2); height: calc(var(--orbit-radius) * 2); border: 3px dashed rgba(0, 100, 255, 0.9) !important; border-radius: 50%; pointer-events: none; z-index: 9999; }
 
 /* ==========================================
-   6. MASTER-ZENTRIERUNG & ATMUNGS-ANIMATION
+   6. MASTER-ZENTRIERUNG & BRUTALER SIZING-OVERRIDE
    ========================================== */
 #orbit-wrapper {
     position: absolute !important; top: 0 !important; bottom: 0 !important; left: 0 !important; right: 0 !important; margin: 0 !important; padding: 0 !important;
 }
 
+/* 🌟 KUGELSICHER: Zwingt den Button auf 350px für das Analyse-Menü (Überschreibt ALLES!) */
+#orbit-wrapper > div.relative, #main-btn-area {
+    width: 350px !important;
+    height: 350px !important;
+}
+@media (min-width: 768px) {
+    #orbit-wrapper > div.relative, #main-btn-area { width: 400px !important; height: 400px !important; }
+}
+
+/* 🌟 DYNAMIK: Nur im CPR-Modus zieht er sich auf die Goldenen 240px zusammen */
+body.cpr-mode-small #orbit-wrapper > div.relative,
+body.cpr-mode-small #main-btn-area {
+    width: var(--center-btn-size) !important;
+    height: var(--center-btn-size) !important;
+}
+
+/* Butterweiche Transitions */
+#orbit-wrapper > div.relative {
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transform: translateY(0) !important; 
+}
 #main-btn-area {
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
 }
-#orbit-wrapper > div.relative {
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    transform: translateY(0) !important; 
-}
 
+/* Y-Verschiebung im Dashboard-Modus */
+body.cpr-mode-small #orbit-wrapper > div.relative {
+    transform: translateY(-50px) !important;
+}
 body:not(.dashboard-active) #top-stats-container:not(.hidden) + #cpr-interface #orbit-wrapper > div.relative {
     transform: translateY(-40px) !important;
 }
 
+/* Haptisches Feedback (Pochen beim Klicken) */
 body.dashboard-active #main-btn-area {
     margin: 0 auto !important; border: none !important; box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important; cursor: pointer; 
 }
@@ -132,15 +154,28 @@ body.dashboard-active #main-btn-area:active {
     transform: scale(0.97) !important; box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important; filter: brightness(0.97) !important;
 }
 
-body.cpr-mode-small #main-btn-area {
-    width: var(--center-btn-size) !important; height: var(--center-btn-size) !important;
-}
-body.cpr-mode-small #orbit-wrapper > div.relative {
-    transform: translateY(-50px) !important;
-}
+/* ==========================================
+   7. STRIKTES TIMER-LAYOUT (Verhindert Tailwind-Bugs!)
+   ========================================== */
+.vt-top-text { position: absolute; top: 38px; left: 0; width: 100%; text-align: center; pointer-events: none; }
+.vt-top-text span { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.8; transition: color 0.3s ease; }
+
+.vt-timer-display { position: absolute; top: 65px; left: 0; width: 100%; text-align: center; font-size: 72px; font-weight: 900; line-height: 1; color: #1e293b; letter-spacing: -0.05em; pointer-events: none; transition: color 0.3s ease; }
+
+.vt-alert-box { position: absolute; top: 145px; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; z-index: 10; }
+.vt-alert-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.vt-alert-dot { width: 8px; height: 8px; border-radius: 50%; }
+.vt-alert-txt { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap; }
+.vt-alert-num { font-size: 32px; font-weight: 900; line-height: 1; }
+
+.vt-analyze-badge { padding: 4px 16px; background-color: #E3000F; border-radius: 9999px; box-shadow: 0 0 15px rgba(227,0,15,0.6); margin-bottom: 4px; }
+.vt-analyze-txt { font-size: 12px; font-weight: 800; color: white; text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap; }
+.vt-analyze-sub { font-size: 10px; font-weight: 800; color: #E3000F; text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap; }
+
+.vt-bottom-info { position: absolute; bottom: 25px; left: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 800; color: #475569; pointer-events: none; }
 
 /* ==========================================
-   7. KUGELSICHERES LAYOUT FÜR ANALYSE & ENERGIE (350px Screens)
+   8. KUGELSICHERES LAYOUT FÜR ANALYSE & ENERGIE (350px Screens)
    ========================================== */
 /* Zwingt die Container in ein sauberes Flexbox-Raster, egal ob Tailwind fehlt oder nicht! */
 #view-decision, #view-joule, #view-cpr-resume {
