@@ -3,6 +3,7 @@
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
  * - UX FIX: Fadenkreuz-Messwerkzeug im Settings-Menü schaltbar!
  * - UI UPGRADE: Millimetergenaue Y-Positionen verhindern jedes Herausrutschen!
+ * - LOGIC FIX: Background-Sync pusht den Button jetzt zuverlässig auf 350px!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -10,8 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
 
     // =========================================================
-    // 🌟 ABSOLUT-POSITIONIERUNG: Tauscht Schock-Info und Puls Tasten
-    // Alles bleibt zu 100% sicher innerhalb des 230px Kreises!
+    // 🌟 ABSOLUT-POSITIONIERUNG für den Timer Screen
     // =========================================================
     function remodelViewTimer() {
         const vt = document.getElementById('view-timer');
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     02:00
                 </div>
 
-                <!-- 3. Unter dem Timer: Die Puls-Tasten Warnung (Völlig sicher in der Mitte) -->
+                <!-- 3. Unter dem Timer: Die Puls-Tasten Warnung -->
                 <div id="inner-prepare-alert" class="hidden absolute top-[145px] md:top-[160px] left-0 w-full flex items-center justify-center gap-1.5 z-10 pointer-events-none">
                     <div class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></div>
                     <span class="text-xs md:text-sm font-bold text-amber-500 uppercase tracking-widest whitespace-nowrap">Puls tasten in <span id="prepare-time">15</span>s</span>
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="text-xs md:text-sm font-bold text-[#E3000F] uppercase tracking-widest whitespace-nowrap">Defi laden: <span id="precharge-time">05</span>s</span>
                 </div>
 
-                <!-- 4. Unten: Schock Info (Sicher vor dem Ring verankert) -->
+                <!-- 4. Unten: Schock Info -->
                 <div class="absolute bottom-[25px] md:bottom-[30px] left-0 w-full flex items-center justify-center text-xs md:text-sm font-bold text-slate-600 gap-2 pointer-events-none">
                     <i class="fa-solid fa-bolt text-amber-400"></i>
                     <span id="rhythm-info-shocks">${shocks}</span>
@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.classList.remove('cpr-mode-small');
         }
     }
+    // 🌟 FIX: Den navHelper global verfügbar machen, damit der Timer die "Atmung" des Buttons auslösen kann!
+    window.CPR.navHelper = navHelper;
 
     function addClick(id, handler) { 
         const el = document.getElementById(id); 
@@ -736,6 +738,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 AppState.cycleSeconds = Math.min(120, currentCprSec + passedSeconds); 
                 let currentAdrSec = Number(AppState.adrSeconds) || 0;
                 AppState.adrSeconds = Math.min(240, currentAdrSec + passedSeconds); 
+
+                // 🌟 FIX: Wenn die App im Hintergrund war und der 120s Zyklus abgelaufen ist, 
+                // spulen wir sofort logisch zur Rhythmusanalyse vor, BEVOR die Oberfläche lädt!
+                if (AppState.state === 'RUNNING' && AppState.cycleSeconds >= 120) {
+                    AppState.state = 'DECISION';
+                    AppState.isCompressing = false;
+                }
             }
             AppState.isCompressing = false; 
             
@@ -785,17 +794,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('satellites')?.classList.remove('hidden');
                 ['btn-airway', 'btn-cpr'].forEach(id => { document.getElementById(id)?.classList.remove('opacity-0', 'pointer-events-none'); });
                 
-                if (AppState.isRunning !== false) { 
-                    startMainTimer(); 
-                    if(CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') CPR.CPRTimer.start(); 
-                } else { 
-                    navHelper(null, 'view-timer', 'small'); 
-                    if(CPR.CPRTimer && typeof CPR.CPRTimer.updateUI === 'function') CPR.CPRTimer.updateUI(); 
-                    document.getElementById('debriefing-modal')?.classList.replace('hidden', 'flex'); 
-                }
-                updateCprUI(); requestWakeLock();
-                if (AppState.adrSeconds > 0 && CPR.AdrTimer && typeof CPR.AdrTimer.start === 'function') CPR.AdrTimer.start(true); 
-                
                 if (AppState.state === 'WAITING_CPR_RESUME') {
                     navHelper(null, 'view-cpr-resume', 'large');
                 } else if (AppState.state !== 'RUNNING') { 
@@ -803,6 +801,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else { 
                     navHelper(null, 'view-timer', 'small'); 
                 }
+
+                if (AppState.isRunning !== false) { 
+                    startMainTimer(); 
+                    // Nur starten, wenn wir auch wirklich noch rennen
+                    if (AppState.state === 'RUNNING' && CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
+                        CPR.CPRTimer.start(); 
+                    } else if (CPR.CPRTimer && typeof CPR.CPRTimer.updateUI === 'function') {
+                        CPR.CPRTimer.updateUI();
+                    }
+                } else { 
+                    if(CPR.CPRTimer && typeof CPR.CPRTimer.updateUI === 'function') CPR.CPRTimer.updateUI(); 
+                    document.getElementById('debriefing-modal')?.classList.replace('hidden', 'flex'); 
+                }
+                updateCprUI(); requestWakeLock();
+                if (AppState.adrSeconds > 0 && CPR.AdrTimer && typeof CPR.AdrTimer.start === 'function') CPR.AdrTimer.start(true); 
             }
             
             const logContainer = document.getElementById('protocol-list');
