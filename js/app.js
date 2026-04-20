@@ -2,7 +2,7 @@
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
  * - UX FIX: Fadenkreuz-Messwerkzeug im Settings-Menü schaltbar!
- * - UI UPGRADE: Der Dashboard-Button baut sich selbst um und ist voll klickbar!
+ * - UI UPGRADE: Der Dashboard-Button baut sich selbst um und integriert Inline-Alerts!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -20,34 +20,32 @@ document.addEventListener('DOMContentLoaded', function() {
             const shocks = AppState.shockCount || 0;
             
             vt.innerHTML = `
-                <!-- Filigrane Analyse Info (Neu: Bei Analyse drücken) -->
-                <div class="absolute top-[40px] md:top-[50px] w-full flex items-center justify-center gap-2 opacity-70 pointer-events-none">
-                    <div class="h-[1px] w-3 md:w-5 bg-slate-400 rounded-full"></div>
-                    <span class="text-[9px] md:text-[10px] font-bold text-slate-600 uppercase tracking-[0.15em]">Bei Analyse drücken</span>
-                    <div class="h-[1px] w-3 md:w-5 bg-slate-400 rounded-full"></div>
+                <!-- Klare, lesbare Analyse Info -->
+                <div class="absolute top-[35px] md:top-[45px] w-full flex items-center justify-center pointer-events-none">
+                    <span class="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-widest">Bei Analyse drücken</span>
                 </div>
 
-                <!-- Der Timer (🌟 25% Größer und perfekt zentriert) -->
-                <div id="cycle-timer" class="absolute top-[75px] md:top-[85px] w-full text-center font-black text-6xl md:text-7xl text-slate-800 tracking-tighter pointer-events-none" style="font-variant-numeric: tabular-nums;">
+                <!-- Der Haupt-Timer (Riesig und dominant) -->
+                <div id="cycle-timer" class="absolute top-[70px] md:top-[85px] w-full text-center font-black text-[64px] md:text-[76px] leading-none text-slate-800 tracking-tighter pointer-events-none" style="font-variant-numeric: tabular-nums;">
                     02:00
                 </div>
 
-                <!-- Schock Info (Puristisch & Edel am unteren Rand) -->
-                <div class="absolute bottom-[35px] md:bottom-[45px] w-full flex items-center justify-center text-xs md:text-sm font-bold text-slate-500 gap-2 pointer-events-none">
-                    <i class="fa-solid fa-bolt text-amber-400"></i>
-                    <span id="rhythm-info-shocks">${shocks}</span>
-                    <span class="text-slate-300">|</span>
-                    <span id="rhythm-info-joule" class="text-[#E3000F]">150 J</span>
+                <!-- Warn-Alerts (Integriert als saubere Text-Zeile UNTER dem Timer) -->
+                <div id="inner-prepare-alert" class="hidden absolute top-[150px] md:top-[175px] w-full items-center justify-center gap-2 z-10 pointer-events-none">
+                    <div class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></div>
+                    <span class="text-xs md:text-sm font-bold text-amber-500 uppercase tracking-widest">Puls tasten in <span id="prepare-time">15</span>s</span>
+                </div>
+                <div id="inner-precharge-alert" class="hidden absolute top-[150px] md:top-[175px] w-full items-center justify-center gap-2 z-10 pointer-events-none">
+                    <div class="h-2 w-2 rounded-full bg-[#E3000F] animate-ping"></div>
+                    <span class="text-xs md:text-sm font-bold text-[#E3000F] uppercase tracking-widest">Defi laden: <span id="precharge-time">05</span>s</span>
                 </div>
 
-                <!-- Warn-Alerts (Zentriert über allem) -->
-                <div id="inner-prepare-alert" class="hidden absolute inset-0 bg-white/95 rounded-full flex-col items-center justify-center z-10 pointer-events-none">
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Analyse in</span>
-                    <span id="prepare-time" class="text-4xl font-black text-amber-500">15</span>
-                </div>
-                <div id="inner-precharge-alert" class="hidden absolute inset-0 bg-white/95 rounded-full flex-col items-center justify-center z-10 pointer-events-none">
-                    <span class="text-[10px] font-bold text-[#E3000F] uppercase tracking-widest mb-1 animate-pulse">Defi laden!</span>
-                    <span id="precharge-time" class="text-4xl font-black text-[#E3000F]">05</span>
+                <!-- Schock Info (Kräftiger und puristisch ganz unten) -->
+                <div class="absolute bottom-[28px] md:bottom-[35px] w-full flex items-center justify-center text-sm md:text-base font-bold text-slate-600 gap-2 pointer-events-none">
+                    <i class="fa-solid fa-bolt text-amber-400"></i>
+                    <span id="rhythm-info-shocks">${shocks}</span>
+                    <span class="text-slate-300 mx-1">|</span>
+                    <span id="rhythm-info-joule" class="text-[#E3000F]">150 J</span>
                 </div>
             `;
         }
