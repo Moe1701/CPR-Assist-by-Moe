@@ -1,9 +1,8 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
- * - UX FIX: Fadenkreuz-Messwerkzeug im Settings-Menü schaltbar!
  * - UI UPGRADE: Millimetergenaue Y-Positionen verhindern jedes Herausrutschen!
- * - LOGIC FIX: Background-Sync pusht den Button jetzt zuverlässig auf 350px!
+ * - LOGIC FIX: Timer schaltet nicht mehr automatisch um, sondern eskaliert!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -11,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
 
     // =========================================================
-    // 🌟 ABSOLUT-POSITIONIERUNG für den Timer Screen
+    // 🌟 ABSOLUT-POSITIONIERUNG: Neues Layout mit Timer UNTER der Warnung
     // =========================================================
     function remodelViewTimer() {
         const vt = document.getElementById('view-timer');
@@ -22,22 +21,39 @@ document.addEventListener('DOMContentLoaded', function() {
             vt.innerHTML = `
                 <!-- 1. Top: Bei Analyse drücken -->
                 <div class="absolute top-[35px] md:top-[40px] left-0 w-full flex justify-center items-center pointer-events-none">
-                    <span class="text-[10px] md:text-[12px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap opacity-80">Bei Analyse drücken</span>
+                    <span id="timer-top-text" class="text-[10px] md:text-[12px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap opacity-80 transition-colors duration-300">Bei Analyse drücken</span>
                 </div>
 
                 <!-- 2. Mitte: Der Timer -->
-                <div id="cycle-timer" class="absolute top-[70px] md:top-[80px] left-0 w-full text-center font-black text-[64px] md:text-[72px] leading-none text-slate-800 tracking-tighter pointer-events-none" style="font-variant-numeric: tabular-nums;">
+                <div id="cycle-timer" class="absolute top-[70px] md:top-[80px] left-0 w-full text-center font-black text-[64px] md:text-[72px] leading-none text-slate-800 tracking-tighter pointer-events-none transition-colors duration-300" style="font-variant-numeric: tabular-nums;">
                     02:00
                 </div>
 
-                <!-- 3. Unter dem Timer: Die Puls-Tasten Warnung -->
-                <div id="inner-prepare-alert" class="hidden absolute top-[145px] md:top-[160px] left-0 w-full flex items-center justify-center gap-1.5 z-10 pointer-events-none">
-                    <div class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></div>
-                    <span class="text-xs md:text-sm font-bold text-amber-500 uppercase tracking-widest whitespace-nowrap">Puls tasten in <span id="prepare-time">15</span>s</span>
+                <!-- 3. Unter dem Timer: Die Alerts (Text oben, Countdown groß darunter!) -->
+                <!-- 30s Warnung -->
+                <div id="inner-prepare-alert" class="hidden absolute top-[140px] md:top-[150px] left-0 w-full flex-col items-center justify-center z-10 pointer-events-none">
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        <div class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></div>
+                        <span class="text-[10px] md:text-[11px] font-bold text-amber-500 uppercase tracking-widest whitespace-nowrap">Puls tasten, Defi laden</span>
+                    </div>
+                    <span id="prepare-time" class="text-2xl md:text-3xl font-black text-amber-500 leading-none mt-1">30</span>
                 </div>
-                <div id="inner-precharge-alert" class="hidden absolute top-[145px] md:top-[160px] left-0 w-full flex items-center justify-center gap-1.5 z-10 pointer-events-none">
-                    <div class="h-2 w-2 rounded-full bg-[#E3000F] animate-ping"></div>
-                    <span class="text-xs md:text-sm font-bold text-[#E3000F] uppercase tracking-widest whitespace-nowrap">Defi laden: <span id="precharge-time">05</span>s</span>
+
+                <!-- 15s Warnung -->
+                <div id="inner-precharge-alert" class="hidden absolute top-[140px] md:top-[150px] left-0 w-full flex-col items-center justify-center z-10 pointer-events-none">
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        <div class="h-2 w-2 rounded-full bg-[#E3000F] animate-ping"></div>
+                        <span class="text-[10px] md:text-[11px] font-bold text-[#E3000F] uppercase tracking-widest whitespace-nowrap">Defi laden</span>
+                    </div>
+                    <span id="precharge-time" class="text-2xl md:text-3xl font-black text-[#E3000F] leading-none mt-1">15</span>
+                </div>
+
+                <!-- 0s Warnung (NEU: Rhythmusanalyse fällig!) -->
+                <div id="inner-analyze-alert" class="hidden absolute top-[140px] md:top-[150px] left-0 w-full flex-col items-center justify-center z-10 pointer-events-none">
+                    <div class="px-4 py-1 bg-[#E3000F] rounded-full shadow-[0_0_15px_rgba(227,0,15,0.8)] animate-pulse mb-1">
+                        <span class="text-xs md:text-sm font-bold text-white uppercase tracking-widest whitespace-nowrap">Analyse Fällig</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-[#E3000F] uppercase tracking-widest whitespace-nowrap">Jetzt hier drücken</span>
                 </div>
 
                 <!-- 4. Unten: Schock Info -->
@@ -64,7 +80,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.classList.remove('cpr-mode-small');
         }
     }
-    // 🌟 FIX: Den navHelper global verfügbar machen, damit der Timer die "Atmung" des Buttons auslösen kann!
     window.CPR.navHelper = navHelper;
 
     function addClick(id, handler) { 
@@ -739,12 +754,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 let currentAdrSec = Number(AppState.adrSeconds) || 0;
                 AppState.adrSeconds = Math.min(240, currentAdrSec + passedSeconds); 
 
-                // 🌟 FIX: Wenn die App im Hintergrund war und der 120s Zyklus abgelaufen ist, 
-                // spulen wir sofort logisch zur Rhythmusanalyse vor, BEVOR die Oberfläche lädt!
-                if (AppState.state === 'RUNNING' && AppState.cycleSeconds >= 120) {
-                    AppState.state = 'DECISION';
-                    AppState.isCompressing = false;
-                }
+                // LOGIC FIX: Kein Auto-Fast-Forward mehr. Die App bleibt im RUNNING-Zustand,
+                // der Timer eskaliert ab 120s optisch/akustisch und zwingt zur Interaktion.
             }
             AppState.isCompressing = false; 
             
@@ -804,7 +815,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (AppState.isRunning !== false) { 
                     startMainTimer(); 
-                    // Nur starten, wenn wir auch wirklich noch rennen
                     if (AppState.state === 'RUNNING' && CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
                         CPR.CPRTimer.start(); 
                     } else if (CPR.CPRTimer && typeof CPR.CPRTimer.updateUI === 'function') {
