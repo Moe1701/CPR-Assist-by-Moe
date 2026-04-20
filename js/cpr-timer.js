@@ -15,7 +15,6 @@ window.CPR.CPRTimer = (function() {
         const width = canvas.width;
         const height = canvas.height;
         
-        // 🌟 UX FIX: Dünnere 16px Schiene, 12px Füllung!
         const trackWidth = 16;      
         const progressWidth = 12;   
         const center = width / 2;
@@ -107,9 +106,14 @@ window.CPR.CPRTimer = (function() {
             
             if (window.CPR.AppState.state !== 'OB_ANALYZE') {
                 window.CPR.AppState.isCompressing = false;
-                if (window.CPR.UI && typeof window.CPR.UI.navigate === 'function') {
+                
+                // 🌟 LOGIC FIX: Zwingend den neuen navHelper nutzen, damit der Button auf 350px wächst!
+                if (window.CPR.navHelper) {
+                    window.CPR.navHelper('DECISION', 'view-decision', 'large');
+                } else if (window.CPR.UI && typeof window.CPR.UI.navigate === 'function') {
                     window.CPR.UI.navigate('DECISION', 'view-decision', 'large');
                 }
+                
                 if (window.CPR.updateCprUI) window.CPR.updateCprUI();
             }
         }
