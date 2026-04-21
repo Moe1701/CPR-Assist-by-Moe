@@ -122,6 +122,12 @@ body:not(.dashboard-active) #main-btn-area {
     overflow: visible !important;
 }
 
+body:not(.dashboard-active) #orbit-wrapper > div.relative {
+    width: 100% !important;
+    height: 100% !important;
+    transform: none !important;
+}
+
 /* 🌟 DASHBOARD MODUS: Hier wird der Master-Kreis definiert */
 body.dashboard-active #main-btn-area {
     background-color: #ffffff !important;
@@ -164,7 +170,7 @@ body.dashboard-active.cpr-mode-small #orbit-wrapper > div.relative {
 }
 
 /* ==========================================
-   7. STRIKTES TIMER-LAYOUT (Verhindert Tailwind-Bugs!)
+   7. STRIKTES TIMER-LAYOUT
    ========================================== */
 .vt-top-text { position: absolute; top: 38px; left: 0; width: 100%; text-align: center; pointer-events: none; }
 .vt-top-text span { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.8; transition: color 0.3s ease; }
@@ -184,9 +190,9 @@ body.dashboard-active.cpr-mode-small #orbit-wrapper > div.relative {
 .vt-bottom-info { position: absolute; bottom: 25px; left: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 800; color: #475569; pointer-events: none; }
 
 /* ==========================================
-   8. MENÜ-CONTAINER (SAUBER! Zerschießt keine Kind-Elemente mehr!)
+   8. MENÜ-CONTAINER (SAUBER! Zerschießt keine Tailwind-Grids mehr!)
    ========================================== */
-/* Zwingt die *Sichtbaren* Container, den Kreis auszufüllen, ABER lässt die inneren Grids in Ruhe! */
+/* Zwingt die sichtbaren Container, den Kreis exakt auszufüllen */
 body.dashboard-active #view-decision:not(.hidden), 
 body.dashboard-active #view-joule:not(.hidden), 
 body.dashboard-active #view-cpr-resume:not(.hidden),
@@ -202,7 +208,24 @@ body.dashboard-active #view-airway-doc:not(.hidden) {
     height: 100% !important;
     background-color: #ffffff !important;
     border-radius: 50% !important;
-    /* HIER KEINE FLEX/STATIC BEFEHLE MEHR! Tailwind in HTML übernimmt das jetzt fehlerfrei. */
+    overflow: hidden !important; /* Verhindert, dass Ecken aus dem Kreis ragen */
+    /* HIER KEINE FLEX- ODER STATIC-BEFEHLE MEHR! Das Grid übernimmt Tailwind in der HTML. */
+}
+
+/* SICHERHEITS-ANKER: Der Zurück-/Abbrechen-Button klebt bei Menüs immer ganz unten im Kreis! */
+body.dashboard-active #view-decision > button:last-child, 
+body.dashboard-active #view-joule > button:last-child, 
+body.dashboard-active #view-cpr-resume > button:last-child,
+body.dashboard-active #view-meds-menu > button:last-child, 
+body.dashboard-active #view-airway > button:last-child, 
+body.dashboard-active #view-zugang > button:last-child,
+body.dashboard-active #view-rosc-end > button:last-child, 
+body.dashboard-active #view-abbruch-reason > button:last-child {
+    position: absolute !important; 
+    bottom: 25px !important; 
+    left: 50% !important; 
+    transform: translateX(-50%) !important;
+    z-index: 50 !important;
 }
 
 /* ==========================================
