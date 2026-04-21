@@ -59,11 +59,12 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
     transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.1s ease, filter 0.1s ease !important; 
 }
 
+/* 🌟 SICHERHEITS-SCHLOSS FÜR SATELLITEN */
 .satellite-btn.hidden { 
     visibility: hidden !important; 
     opacity: 0 !important; 
     pointer-events: none !important; 
-    display: flex !important; 
+    display: none !important; 
 }
 
 #btn-adrenalin { transform: translate(-50%, -50%) rotate(270deg) translate(var(--orbit-radius)) rotate(-270deg) !important; }
@@ -129,7 +130,7 @@ body.dashboard-active #main-btn-area {
 body:not(.dashboard-active) #main-btn-area {
     width: 350px !important;
     height: 350px !important;
-    background-color: transparent !important; /* Kein weißer Kreis beim Start! */
+    background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
 }
@@ -139,7 +140,7 @@ body.dashboard-active #main-btn-area {
     background-color: #ffffff !important;
     border-radius: 50% !important;
     overflow: hidden !important; 
-    border: 8px solid #f8fafc !important; /* border-slate-50 */
+    border: 8px solid #f8fafc !important; 
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
 }
 
@@ -191,16 +192,31 @@ body.dashboard-active #main-btn-area:active {
 /* ==========================================
    8. KUGELSICHERES LAYOUT FÜR ALLE MENÜS (350px Screens)
    ========================================== */
-/* Zwingt ALLE Container in ein sauberes Flexbox-Raster (NUR IM DASHBOARD!) */
-body.dashboard-active #view-decision, 
-body.dashboard-active #view-joule, 
-body.dashboard-active #view-cpr-resume,
-body.dashboard-active #view-meds-menu, 
-body.dashboard-active #view-airway, 
-body.dashboard-active #view-zugang,
-body.dashboard-active #view-rosc-end, 
-body.dashboard-active #view-abbruch-reason, 
-body.dashboard-active #view-airway-doc {
+
+/* 🌟 DER BUGFIX: Sicherstellen, dass unsichtbare Menüs WIRKLICH unsichtbar bleiben! */
+#view-timer.hidden,
+#view-decision.hidden, 
+#view-joule.hidden, 
+#view-cpr-resume.hidden,
+#view-meds-menu.hidden, 
+#view-airway.hidden, 
+#view-zugang.hidden,
+#view-rosc-end.hidden, 
+#view-abbruch-reason.hidden, 
+#view-airway-doc.hidden {
+    display: none !important;
+}
+
+/* Zwingt ALLE *sichtbaren* Container in ein sauberes Flexbox-Raster (NUR IM DASHBOARD!) */
+body.dashboard-active #view-decision:not(.hidden), 
+body.dashboard-active #view-joule:not(.hidden), 
+body.dashboard-active #view-cpr-resume:not(.hidden),
+body.dashboard-active #view-meds-menu:not(.hidden), 
+body.dashboard-active #view-airway:not(.hidden), 
+body.dashboard-active #view-zugang:not(.hidden),
+body.dashboard-active #view-rosc-end:not(.hidden), 
+body.dashboard-active #view-abbruch-reason:not(.hidden), 
+body.dashboard-active #view-airway-doc:not(.hidden) {
     position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
     display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important;
     gap: 12px !important; padding: 20px !important; box-sizing: border-box !important;
@@ -252,12 +268,13 @@ body.dashboard-active #view-abbruch-reason > div > button {
 /* ==========================================
    9. ARCHITEKTUR-FIX: SATELLITEN AUSBLENDEN
    ========================================== */
-/* Sobald das Hauptmenü auf 350px wächst, tauchen alle Satelliten elegant ab! */
-body.center-menu-open .satellite-btn,
-body.center-menu-open #btn-airway,
-body.center-menu-open #btn-cpr {
+/* Sobald die App im Dashboard ist UND der Kreis groß ist (NICHT .cpr-mode-small), 
+   schießt das CSS die Satelliten vollautomatisch in die Unsichtbarkeit! */
+body.dashboard-active:not(.cpr-mode-small) .satellite-btn,
+body.dashboard-active:not(.cpr-mode-small) #btn-airway,
+body.dashboard-active:not(.cpr-mode-small) #btn-cpr {
     opacity: 0 !important;
     visibility: hidden !important;
     pointer-events: none !important;
-    transform: scale(0.8) !important;
+    transform: scale(0.5) !important;
 }
