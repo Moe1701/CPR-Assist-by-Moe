@@ -1,302 +1,210 @@
 /**
- * CPR Assist - Log Timeline Modul (V16.7 - Getrennte Medikamente)
+ * CPR Assist - Log & Timeline Modul (Voll integriert mit SBAR)
  * - Übernimmt das Rendern des Logbuch-Panels (Zeitlinie, Liste, Übergabe).
  * - Zeigt 1 Minute pro Zeile an (kein horizontales Scrollen).
- * - Nutzt NUR NOCH Symbole (Icons) auf der Zeitachse mit Zick-Zack-Kollisionserkennung.
- * - Inklusive fixierter Legende mit getrennten Icons für Adrenalin und Amiodaron.
+ * - Generiert automatisch den SBAR-Report für die Klinikübergabe!
  */
 
 window.CPR = window.CPR || {};
 
 window.CPR.LogTimeline = (function() {
-    let currentView = 'timeline'; 
+    let currentView = 'list'; // Standardansicht beim Öffnen
     let isRendering = false;
     let renderTimeout = null;
 
-    // --- 1. ICON LOGIK (Ordnet Aktionen strengen Symbolen zu) ---
+    // --- 1. ICON LOGIK (Für die Zeitlinie) ---
     function getIconData(txt) {
         if (!txt) return null;
         const t = txt.toLowerCase();
         
-        // Assessment / Checklisten
-        if (t.includes('hits') || t.includes('h.i.t.s') || t.includes('sampler') || t.includes('anamnese')) {
-            return { icon: '📋', type: 'info', tooltip: txt };
-        }
+        if (t.includes('hits') || t.includes('sampler') || t.includes('anamnese')) return { icon: '📋', type: 'info', tooltip: txt };
+        if (t.includes('schock')) return { icon: '⚡', type: 'shock', tooltip: txt };
+        if (t.includes('adrenalin')) return { icon: '💉', type: 'adr', tooltip: txt };
+        if (t.includes('amiodaron') || t.includes('amio')) return { icon: '💊', type: 'amio', tooltip: txt };
+        if (t.includes('atemweg') || t.includes('eti') || t.includes('lts') || t.includes('igel')) return { icon: '🫁', type: 'airway', tooltip: txt };
+        if (t.includes('zugang') || t.includes('i.v.') || t.includes('i.o.')) return { icon: '🩸', type: 'access', tooltip: txt };
+        if (t.includes('rosc')) return { icon: '❤️', type: 'rosc', tooltip: txt };
+        if (t.includes('start')) return { icon: '▶️', type: 'start', tooltip: txt };
+        if (t.includes('pause') || t.includes('fortgesetzt')) return null; // Pausen nicht als Icon
         
-        // Therapie (GETRENNT: Adrenalin vs Amiodaron)
-        if (t.includes('schock')) {
-            return { icon: '⚡', type: 'shock', tooltip: txt };
-        }
-        if (t.includes('adrenalin')) {
-            return { icon: '💉', type: 'adr', tooltip: txt };
-        }
-        if (t.includes('amiodaron')) {
-            return { icon: '💊', type: 'amio', tooltip: txt };
-        }
-        
-        // Atemweg & Zugang
-        if (t.includes('atemweg:') || t.includes('beatmungen durchge')) {
-            return { icon: '🫁', type: 'airway', tooltip: txt };
-        }
-        if (t.includes('zugang:')) {
-            return { icon: '🩸', type: 'access', tooltip: txt };
-        }
-        
-        // Workflow & Status
-        if (t.includes('start rea')) {
-            return { icon: '▶️', type: 'start', tooltip: txt };
-        }
-        if (t.includes('rosc!')) {
-            return { icon: '❤️', type: 'rosc', tooltip: txt };
-        }
-        if (t.includes('re-arrest')) {
-            return { icon: '💔', type: 'arrest', tooltip: txt };
-        }
-        if (t.includes('abbruch') || t.includes('beendet')) {
-            return { icon: '🛑', type: 'end', tooltip: txt };
-        }
-        
-        // Filtert irrelevante System-Meldungen aus der grafischen Zeitlinie
-        if (t.includes('kompression pause') || t.includes('kompression fortgesetzt') || 
-            t.includes('beatmungen übersprungen') || t.includes('modus manuell') ||
-            t.includes('atemweg entfernt')) {
-            return null;
-        }
-        
-        // Fallback
-        return { icon: 'ℹ️', text: txt.substring(0, 15) + (txt.length > 15 ? '...' : ''), type: 'default' };
+        return { icon: '📝', type: 'generic', tooltip: txt };
     }
 
-    // --- 2. RENDER FUNKTIONEN FÜR DIE DREI TABS ---
-    
-    function renderTimeline(data, container) {
-        // Die Legende (Bleibt oben fixiert - Jetzt mit getrennten Meds)
-        let html = `
-        <div class="w-full flex-none bg-white border-b border-slate-200 p-2 shadow-sm z-20 relative">
-            <div class="flex flex-wrap justify-center gap-x-3 gap-y-1.5 text-[9px] font-bold text-slate-600 uppercase tracking-wider">
-                <span class="flex items-center gap-1"><span class="text-xs">▶️</span> Start</span>
-                <span class="flex items-center gap-1"><span class="text-xs">⚡</span> Schock</span>
-                <span class="flex items-center gap-1 text-[#E3000F]"><span class="text-xs">💉</span> Adrenalin</span>
-                <span class="flex items-center gap-1 text-purple-700"><span class="text-xs">💊</span> Amiodaron</span>
-                <span class="flex items-center gap-1"><span class="text-xs">🫁</span> Atemweg</span>
-                <span class="flex items-center gap-1"><span class="text-xs">🩸</span> Zugang</span>
-                <span class="flex items-center gap-1"><span class="text-xs">📋</span> Info</span>
-                <span class="flex items-center gap-1"><span class="text-xs">❤️</span> ROSC</span>
-                <span class="flex items-center gap-1"><span class="text-xs">🛑</span> Ende</span>
+    // --- 2. SBAR ÜBERGABE GENERATOR (NEU!) ---
+    function renderSummaryView() {
+        const container = document.getElementById('view-summary');
+        if (!container) return;
+        
+        const AppState = window.CPR.AppState;
+        const Utils = window.CPR.Utils;
+
+        const duration = Utils.formatTime(AppState.totalSeconds || 0);
+        const shocks = AppState.shockCount || 0;
+        const adr = AppState.adrCount || 0;
+        const amio = AppState.amioCount || 0;
+        
+        const awLabel = document.getElementById('airway-label');
+        const aw = AppState.airwayEstablished ? (awLabel ? awLabel.innerText : 'Ja') : 'Nein';
+        
+        const zugLabel = document.getElementById('zugang-label');
+        const zugang = (zugLabel && zugLabel.innerText !== 'Zugang') ? zugLabel.innerText : 'Nein';
+        
+        const patInfo = AppState.isPediatric ? `Kind (${AppState.patientWeight ? AppState.patientWeight+' kg' : 'Gewicht unb.'})` : 'Erwachsener';
+
+        container.innerHTML = `
+            <div class="p-4 flex flex-col gap-3 bg-slate-50 min-h-full">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <h4 class="text-[#E3000F] font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">S</span>Situation</h4>
+                    <p class="text-sm font-bold text-slate-700 leading-tight">Laufende Reanimation seit <span class="text-[#E3000F]">${duration}</span> min. Bisher <span class="text-amber-500">${shocks}x geschockt</span>.</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <h4 class="text-blue-600 font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">B</span>Background</h4>
+                    <ul class="text-sm font-bold text-slate-700 space-y-1.5">
+                        <li class="flex gap-2"><i class="fa-solid fa-user text-slate-400 w-4 mt-0.5"></i> <span>${patInfo}</span></li>
+                        <li class="flex gap-2"><i class="fa-solid fa-droplet text-indigo-400 w-4 mt-0.5"></i> <span>Zugang: ${zugang}</span></li>
+                        <li class="flex gap-2"><i class="fa-solid fa-lungs text-cyan-500 w-4 mt-0.5"></i> <span>Atemweg: ${aw}</span></li>
+                    </ul>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <h4 class="text-purple-600 font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">A</span>Assessment</h4>
+                    <p class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Medikamente verabreicht:</p>
+                    <div class="flex gap-2 flex-wrap">
+                        <span class="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-black text-slate-700 border border-slate-200">${adr}x Adrenalin</span>
+                        <span class="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-black text-slate-700 border border-slate-200">${amio}x Amiodaron</span>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="w-full flex-1 overflow-y-auto custom-scrollbar bg-slate-50 flex flex-col p-2 pb-12">
+        `;
+    }
+
+    // --- 3. ZEITLINIEN GENERATOR ---
+    function renderTimelineView() {
+        const container = document.getElementById('view-timeline');
+        if (!container) return;
+        const events = window.CPR.AppState.protocolData || [];
+        if (events.length === 0) {
+            container.innerHTML = `<div class="p-6 text-center text-slate-400 font-bold uppercase tracking-widest text-xs"><i class="fa-solid fa-clock-rotate-left text-3xl mb-2 block opacity-50"></i>Noch keine Ereignisse</div>`;
+            return;
+        }
+
+        let html = `<div class="p-4 bg-slate-50 min-h-full">`;
+        const totalMinutes = Math.max(1, Math.ceil((window.CPR.AppState.totalSeconds || 0) / 60));
+
+        // Legende
+        html += `
+            <div class="mb-4 flex flex-wrap gap-3 justify-center bg-white p-2 rounded-xl shadow-sm border border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <span class="flex items-center gap-1"><span class="text-sm">⚡</span> Schock</span>
+                <span class="flex items-center gap-1"><span class="text-sm">💉</span> Adrenalin</span>
+                <span class="flex items-center gap-1"><span class="text-sm">💊</span> Amiodaron</span>
+                <span class="flex items-center gap-1"><span class="text-sm">🫁</span> Atemweg</span>
+                <span class="flex items-center gap-1"><span class="text-sm">🩸</span> Zugang</span>
+            </div>
+            <div class="relative pl-8 border-l-2 border-slate-200 space-y-6">
         `;
 
-        const totalSec = window.CPR.AppState?.totalSeconds || 0;
-        const maxMinute = Math.max(4, Math.floor(totalSec / 60)); // Mindestens 5 Minuten (0 bis 4) zeigen
-
-        // Daten mappen und filtern
-        const mappedData = data.map(d => ({
-            ...d, 
-            iconData: getIconData(d.action)
-        })).filter(d => d.iconData !== null);
-
-        if (mappedData.length === 0 && totalSec === 0) {
-            html += '<div class="text-center text-slate-400 text-xs font-bold mt-10 uppercase tracking-widest p-4 w-full">Noch keine Ereignisse dokumentiert</div>';
-            html += '</div>';
-            container.innerHTML = html;
-            return;
-        }
-
-        // Zeile für Zeile (Minute für Minute) rendern
-        for (let m = 0; m <= maxMinute; m++) {
-            const minEvents = mappedData.filter(d => Math.floor(d.secondsFromStart / 60) === m);
-            const isCurrentMinute = m === Math.floor(totalSec / 60);
+        for (let min = 0; min < totalMinutes; min++) {
+            const minStart = min * 60;
+            const minEnd = minStart + 59;
+            const minEvents = events.filter(e => e.secondsFromStart >= minStart && e.secondsFromStart <= minEnd);
             
             html += `
-            <div class="relative w-full h-[85px] shrink-0 border-b border-slate-200/40">
-                
-                <!-- Label: Minute -->
-                <div class="absolute left-2 top-2 flex flex-col leading-none">
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Min ${m+1}</span>
-                </div>
-                
-                <!-- Zeitachse (Horizontale Linie in der Mitte) -->
-                <div class="absolute top-1/2 left-[12%] right-[8%] h-[3px] bg-slate-200 rounded-full -translate-y-1/2 z-0"></div>
-                <span class="absolute left-[12%] top-[calc(50%+6px)] text-[8px] font-bold text-slate-400 -translate-x-1/2">0s</span>
-                <span class="absolute right-[8%] top-[calc(50%+6px)] text-[8px] font-bold text-slate-400 translate-x-1/2">60s</span>
+                <div class="relative">
+                    <div class="absolute -left-[45px] top-0 bg-slate-200 text-slate-600 text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm">
+                        ${min.toString().padStart(2, '0')}'
+                    </div>
+                    <div class="absolute -left-[33px] top-1.5 w-2 h-2 rounded-full bg-slate-300"></div>
+                    <div class="min-h-[24px] flex flex-wrap gap-2 items-center w-full relative">
             `;
 
-            // Pulsierender roter Indikator für "Aktuelle Zeit"
-            if (isCurrentMinute && window.CPR.AppState?.isRunning) {
-                const currSec = totalSec % 60;
-                const currLeft = 12 + (currSec / 60) * 80; // Range: 12% bis 92%
-                html += `<div class="absolute top-1/2 -translate-y-1/2 w-1.5 h-3 bg-red-400/60 rounded-full z-0" style="left: ${currLeft}%; transform: translate(-50%, -50%);"></div>`;
-            }
-
-            // Kollisions-Erkennung (Zick-Zack-Verteilung)
-            let lastLeftPct = -999;
-            let currentLevel = 0; // 0 = Mitte, -1 = Oben, 1 = Unten
-
-            minEvents.forEach((ev) => {
-                const sec = ev.secondsFromStart % 60;
-                const leftPct = 12 + (sec / 60) * 80; // Exakte Position auf der Linie (12% bis 92%)
-                
-                // Prüfen ob das vorherige Icon zu nah ist (weniger als 6% Abstand)
-                if (leftPct - lastLeftPct < 6) {
-                    // Kollision! Level wechseln
-                    if (currentLevel === 0) currentLevel = -1; // Geh nach oben
-                    else if (currentLevel === -1) currentLevel = 1; // Geh nach unten
-                    else currentLevel = 0; // Notfall-Fallback zurück zur Mitte
-                } else {
-                    // Genug Platz, zurück in die Mitte
-                    currentLevel = 0; 
+            let zickZack = true;
+            minEvents.forEach(evt => {
+                const iconData = getIconData(evt.action);
+                if (iconData) {
+                    const marginClass = zickZack ? 'mt-0' : 'mt-4';
+                    html += `
+                        <div class="relative group cursor-pointer ${marginClass}" title="${iconData.tooltip}">
+                            <div class="w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-sm transform hover:scale-110 transition-transform">
+                                ${iconData.icon}
+                            </div>
+                        </div>
+                    `;
+                    zickZack = !zickZack;
                 }
-                
-                lastLeftPct = leftPct;
-
-                // Y-Positionen der Icons berechnen
-                let topPosition = '50%'; // Level 0
-                if (currentLevel === -1) topPosition = '20%'; // Oben
-                if (currentLevel === 1) topPosition = '80%'; // Unten
-
-                // Wenn nicht in der Mitte, zeichnen wir einen feinen Strich zur Achse
-                if (currentLevel !== 0) {
-                    const startTop = currentLevel === -1 ? '20%' : '50%';
-                    const lineH = '30%';
-                    html += `<div class="absolute w-[1.5px] bg-slate-300 z-10" style="left: ${leftPct}%; top: ${startTop}; height: ${lineH}; transform: translateX(-50%);"></div>`;
-                }
-
-                // Spezial-Rahmenfarben für schnelle Lesbarkeit
-                let borderColor = "border-slate-100";
-                if (ev.iconData.type === 'adr') borderColor = "border-red-200 bg-red-50";
-                if (ev.iconData.type === 'amio') borderColor = "border-purple-200 bg-purple-50";
-                if (ev.iconData.type === 'shock') borderColor = "border-amber-300 bg-amber-50";
-
-                // Das Icon als rundes Badge zeichnen
-                html += `
-                <div class="absolute z-20 flex items-center justify-center w-6 h-6 bg-white border-2 ${borderColor} shadow-sm rounded-full text-xs transition-transform active:scale-125"
-                     style="left: ${leftPct}%; top: ${topPosition}; transform: translate(-50%, -50%);"
-                     onclick="alert('${ev.time}: ${ev.action}')">
-                    ${ev.iconData.icon}
-                </div>`;
             });
 
-            html += `</div>`; // Ende der Zeile
+            if (minEvents.length === 0) {
+                html += `<div class="w-full border-b border-dashed border-slate-200 mt-3 opacity-50"></div>`;
+            }
+            html += `</div></div>`;
         }
-        
-        html += '</div>'; // Ende Container
+
+        html += `</div></div>`;
         container.innerHTML = html;
     }
 
-    // --- KLASSISCHE LISTEN-ANSICHT (UNVERÄNDERT) ---
-    function renderList(data, container) {
-        if (data.length === 0) {
-            container.innerHTML = '<div class="text-center text-slate-400 text-xs font-bold mt-10 uppercase tracking-widest p-4 w-full">Protokoll ist leer</div>';
+    // --- 4. LISTEN GENERATOR ---
+    function renderListView() {
+        const container = document.getElementById('view-list');
+        if (!container) return;
+        const events = window.CPR.AppState.protocolData || [];
+        
+        if (events.length === 0) {
+            container.innerHTML = `<div class="p-6 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">Noch keine Einträge</div>`;
             return;
         }
 
-        let html = '<div class="flex flex-col gap-2.5 w-full max-w-md mx-auto relative">';
-        data.forEach(item => {
-            const timeStr = window.CPR.Utils.formatRelative(item.secondsFromStart);
+        let html = `<div class="bg-white min-h-full">`;
+        events.forEach(item => {
+            const mStr = Math.floor(item.secondsFromStart / 60).toString().padStart(2, '0');
+            const sStr = (item.secondsFromStart % 60).toString().padStart(2, '0');
             html += `
-            <div class="bg-white border border-slate-100 p-3 rounded-xl shadow-sm flex items-start gap-3 relative overflow-hidden">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-slate-200"></div>
-                <span class="text-[#E3000F] font-mono font-black text-[11px] bg-red-50 px-1.5 py-0.5 rounded border border-red-100 mt-0.5 shrink-0">${timeStr}</span>
-                <span class="text-[12px] font-bold text-slate-700 leading-snug pt-0.5">${item.action}</span>
-            </div>`;
+                <div class="flex items-start gap-3 p-3 border-b border-slate-100">
+                    <span class="text-[#E3000F] font-black w-14 shrink-0">+${mStr}:${sStr}</span> 
+                    <span class="text-slate-700 font-bold leading-tight">${item.action}</span>
+                </div>
+            `;
         });
-        html += '</div>';
+        html += `</div>`;
         container.innerHTML = html;
     }
 
-    // --- ÜBERGABE ANSICHT (UNVERÄNDERT) ---
-    function renderSummary(data, container) {
-        const summaryData = data.filter(item => {
-            const t = item.action.toLowerCase();
-            return t.includes('start') || t.includes('schock') || t.includes('adrenalin') || 
-                   t.includes('amiodaron') || t.includes('atemweg:') || t.includes('zugang:') || 
-                   t.includes('rosc') || t.includes('ende') || t.includes('abbruch');
-        });
-
-        if (summaryData.length === 0) {
-            container.innerHTML = '<div class="text-center text-slate-400 text-xs font-bold mt-10 uppercase tracking-widest p-4 w-full">Noch keine Übergabe-relevanten Maßnahmen.</div>';
-            return;
-        }
-
-        let html = '<div class="flex flex-col gap-2.5 w-full max-w-md mx-auto">';
-        html += '<div class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-1 flex items-center justify-center gap-2"><i class="fa-solid fa-truck-medical"></i> Relevante Maßnahmen</div>';
-        
-        summaryData.forEach(item => {
-            const timeStr = window.CPR.Utils.formatRelative(item.secondsFromStart);
-            let bgClass = "bg-white border-slate-200";
-            if(item.action.toLowerCase().includes('schock')) bgClass = "bg-amber-50 border-amber-200";
-            if(item.action.toLowerCase().includes('adrenalin') || item.action.toLowerCase().includes('amiodaron')) bgClass = "bg-red-50 border-red-200";
-            if(item.action.toLowerCase().includes('rosc')) bgClass = "bg-emerald-50 border-emerald-200";
-
-            html += `
-            <div class="${bgClass} border p-3 rounded-xl shadow-sm flex items-start gap-3">
-                <span class="text-slate-800 font-mono font-black text-[11px] mt-0.5 shrink-0">${timeStr}</span>
-                <span class="text-[12px] font-black text-slate-800 leading-snug pt-0.5">${item.action}</span>
-            </div>`;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    }
-
-    // --- 4. HAUPT-RENDER CONTROL ---
+    // --- 5. MASTER RENDERER & TAB SWITCHER ---
     function renderCurrentView() {
         isRendering = true;
-        const listEl = document.getElementById('protocol-list');
-        if (!listEl) { isRendering = false; return; }
-
-        const data = window.CPR.AppState?.protocolData || [];
-        
-        if (currentView === 'timeline') {
-            listEl.classList.remove('p-4');
-            listEl.classList.add('p-0'); 
-            renderTimeline(data, listEl);
-        } else {
-            listEl.classList.remove('p-0');
-            listEl.classList.add('p-4');
-            if (currentView === 'list') renderList(data, listEl);
-            else if (currentView === 'summary') renderSummary(data, listEl);
-        }
-
-        setTimeout(() => {
-            if (currentView === 'timeline') {
-                const scrollContainer = listEl.querySelector('.overflow-y-auto');
-                if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
-            } else {
-                listEl.scrollTop = listEl.scrollHeight;
-            }
-        }, 10);
-        
+        if (currentView === 'timeline') renderTimelineView();
+        else if (currentView === 'list') renderListView();
+        else if (currentView === 'summary') renderSummaryView();
         isRendering = false;
     }
 
-    // --- 5. TAB STEUERUNG ---
-    function switchTab(tabId) {
-        currentView = tabId;
-        if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
-        
-        const btnTime = document.getElementById('btn-view-timeline');
-        const btnList = document.getElementById('btn-view-list');
-        const btnSumm = document.getElementById('btn-view-summary');
-        
-        const activeClass = ['bg-white', 'text-slate-800', 'shadow-sm'];
-        const inactiveClass = ['text-slate-500', 'bg-transparent'];
-        
-        [btnTime, btnList, btnSumm].forEach(btn => {
-            if(!btn) return;
-            btn.classList.remove(...activeClass, ...inactiveClass);
-            if (btn.id === `btn-view-${tabId}`) {
-                btn.classList.add(...activeClass);
-            } else {
-                btn.classList.add(...inactiveClass);
+    function switchTab(tab) {
+        currentView = tab;
+        ['timeline', 'list', 'summary'].forEach(t => {
+            const btn = document.getElementById('btn-view-' + t);
+            const view = document.getElementById('view-' + t);
+            
+            if (btn) {
+                if (t === tab) {
+                    btn.classList.remove('text-slate-500', 'bg-transparent');
+                    btn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
+                } else {
+                    btn.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
+                    btn.classList.add('text-slate-500', 'bg-transparent');
+                }
+            }
+            if (view) {
+                if (t === tab) {
+                    view.classList.remove('hidden');
+                    if (view.classList.contains('flex-col')) view.classList.add('flex'); else view.classList.add('block');
+                } else {
+                    view.classList.add('hidden');
+                    view.classList.remove('flex', 'block');
+                }
             }
         });
-        
         renderCurrentView();
     }
 
-    // --- 6. INITIALISIERUNG & OBSERVER ---
     function init() {
         const btnTime = document.getElementById('btn-view-timeline');
         if (btnTime) btnTime.addEventListener('click', (e) => { e.stopPropagation(); switchTab('timeline'); });
@@ -310,23 +218,11 @@ window.CPR.LogTimeline = (function() {
         const btnToggle = document.getElementById('btn-toggle-protocol');
         if (btnToggle) {
             btnToggle.addEventListener('click', () => {
-                renderCurrentView();
+                renderCurrentView(); // Rendert neu, sobald das Panel ausfährt
             });
-        }
-
-        const listEl = document.getElementById('protocol-list');
-        if (listEl) {
-            const observer = new MutationObserver((mutations) => {
-                if (isRendering) return; 
-                clearTimeout(renderTimeout);
-                renderTimeout = setTimeout(() => {
-                    renderCurrentView();
-                }, 50);
-            });
-            observer.observe(listEl, { childList: true });
         }
         
-        switchTab('timeline');
+        switchTab('list'); // Default beim Start ist die Liste
     }
 
     return {
