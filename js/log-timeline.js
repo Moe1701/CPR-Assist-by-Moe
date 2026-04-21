@@ -1,14 +1,28 @@
 /**
- * CPR Assist - Log & Timeline Modul (V17 - Voll integriert)
+ * CPR Assist - Log & Timeline Modul (V18 - Bulletproof Container Mapping)
  * - Übernimmt die volle Kontrolle über Zeitlinie, Liste und Übergabe (SBAR)
- * - Zeichnet die Zick-Zack-Zeitlinie mit Icons
- * - Generiert automatisch den SBAR-Report für die Klinikübergabe
+ * - Erkennt automatisch die HTML-Struktur, egal wie die IDs benannt sind!
  */
 
 window.CPR = window.CPR || {};
 
 window.CPR.LogTimeline = (function() {
     let currentView = 'list'; // Standardansicht beim Öffnen
+
+    // --- 0. BULLETPROOF MAPPER (Findet die HTML-Elemente garantiert) ---
+    function getContainer(tabName) {
+        if (tabName === 'timeline') return document.getElementById('view-timeline') || document.getElementById('view-protocol-timeline') || document.getElementById('view-zeitlinie');
+        if (tabName === 'list') return document.getElementById('protocol-list') || document.getElementById('view-list') || document.getElementById('view-protocol-list');
+        if (tabName === 'summary') return document.getElementById('view-summary') || document.getElementById('view-protocol-sbar') || document.getElementById('view-sbar') || document.getElementById('view-uebergabe');
+        return null;
+    }
+
+    function getTabButton(tabName) {
+        if (tabName === 'timeline') return document.getElementById('btn-view-timeline') || document.getElementById('btn-tab-zeitlinie');
+        if (tabName === 'list') return document.getElementById('btn-view-list') || document.getElementById('btn-tab-liste');
+        if (tabName === 'summary') return document.getElementById('btn-view-summary') || document.getElementById('btn-tab-uebergabe');
+        return null;
+    }
 
     // --- 1. ICON LOGIK (Ordnet Texten Emojis zu) ---
     function getIconData(txt) {
@@ -23,14 +37,14 @@ window.CPR.LogTimeline = (function() {
         if (t.includes('zugang') || t.includes('i.v.') || t.includes('i.o.')) return { icon: '🩸', type: 'access', tooltip: txt };
         if (t.includes('rosc')) return { icon: '❤️', type: 'rosc', tooltip: txt };
         if (t.includes('start')) return { icon: '▶️', type: 'start', tooltip: txt };
-        if (t.includes('pause') || t.includes('fortgesetzt')) return null; // Pausen blenden wir aus, um die Linie nicht zu überladen
+        if (t.includes('pause') || t.includes('fortgesetzt')) return null; 
         
         return { icon: '📝', type: 'generic', tooltip: txt };
     }
 
     // --- 2. SBAR ÜBERGABE GENERATOR ---
     function renderSummary() {
-        const container = document.getElementById('view-summary');
+        const container = getContainer('summary');
         if (!container) return;
         
         const AppState = window.CPR.AppState || {};
@@ -77,7 +91,7 @@ window.CPR.LogTimeline = (function() {
 
     // --- 3. ZEITLINIEN GENERATOR ---
     function renderTimeline() {
-        const container = document.getElementById('view-timeline');
+        const container = getContainer('timeline');
         if (!container) return;
         const events = (window.CPR.AppState || {}).protocolData || [];
         
@@ -143,8 +157,7 @@ window.CPR.LogTimeline = (function() {
 
     // --- 4. LISTEN GENERATOR ---
     function renderList() {
-        // Sucht nach der view-list ODER dem protocol-list div
-        const container = document.getElementById('protocol-list') || document.getElementById('view-list');
+        const container = getContainer('list');
         if (!container) return;
         const events = (window.CPR.AppState || {}).protocolData || [];
         
@@ -165,7 +178,7 @@ window.CPR.LogTimeline = (function() {
             `;
         });
         container.innerHTML = html;
-        container.scrollTop = container.scrollHeight; // Autoscroll nach unten
+        container.scrollTop = container.scrollHeight; 
     }
 
     // --- 5. MASTER RENDERER & TAB SWITCHER ---
@@ -178,8 +191,8 @@ window.CPR.LogTimeline = (function() {
     function switchTab(tab) {
         currentView = tab;
         ['timeline', 'list', 'summary'].forEach(t => {
-            const btn = document.getElementById('btn-view-' + t);
-            const view = document.getElementById('view-' + t) || (t === 'list' ? document.getElementById('protocol-list') : null);
+            const btn = getTabButton(t);
+            const view = getContainer(t);
             
             // Buttons einfärben
             if (btn) {
@@ -204,18 +217,17 @@ window.CPR.LogTimeline = (function() {
             }
         });
         
-        renderCurrentView(); // Rendert den Inhalt sofort neu
+        renderCurrentView(); 
     }
 
     function init() {
-        // Tab-Klicks abfangen
-        const btnTime = document.getElementById('btn-view-timeline');
+        const btnTime = getTabButton('timeline');
         if (btnTime) btnTime.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if(window.CPR.Utils) window.CPR.Utils.vibrate(20); switchTab('timeline'); });
         
-        const btnList = document.getElementById('btn-view-list');
+        const btnList = getTabButton('list');
         if (btnList) btnList.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if(window.CPR.Utils) window.CPR.Utils.vibrate(20); switchTab('list'); });
         
-        const btnSumm = document.getElementById('btn-view-summary');
+        const btnSumm = getTabButton('summary');
         if (btnSumm) btnSumm.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if(window.CPR.Utils) window.CPR.Utils.vibrate(20); switchTab('summary'); });
 
         // Setzt beim App-Start die Liste als aktiven Standard-Tab
@@ -224,7 +236,7 @@ window.CPR.LogTimeline = (function() {
 
     return {
         init: init,
-        forceRender: renderCurrentView // Diese Funktion ruft app.js auf, wenn sich etwas ändert!
+        forceRender: renderCurrentView 
     };
 
 })();
