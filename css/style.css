@@ -113,21 +113,33 @@ body.debug-mode #orbit-wrapper > div::before { content: ''; position: absolute; 
     position: absolute !important; top: 0 !important; bottom: 0 !important; left: 0 !important; right: 0 !important; margin: 0 !important; padding: 0 !important;
 }
 
-/* 🌟 KUGELSICHER: Zwingt den Button auf 350px für Menüs und überdeckt alles im Zentrum! */
-#orbit-wrapper > div.relative, #main-btn-area {
+/* 🌟 KUGELSICHER: Zwingt den Button auf 350px für Menüs (NUR IM DASHBOARD MODUS!) */
+body.dashboard-active #orbit-wrapper > div.relative, 
+body.dashboard-active #main-btn-area {
     width: 350px !important;
     height: 350px !important;
     z-index: 60 !important; 
 }
 @media (min-width: 768px) {
-    #orbit-wrapper > div.relative, #main-btn-area { width: 400px !important; height: 400px !important; }
+    body.dashboard-active #orbit-wrapper > div.relative, 
+    body.dashboard-active #main-btn-area { width: 400px !important; height: 400px !important; }
 }
 
-/* Force sauberen weißen Hintergrund für den Hauptkreis */
-#main-btn-area {
+/* Onboarding (Startbildschirm) Style */
+body:not(.dashboard-active) #main-btn-area {
+    width: 350px !important;
+    height: 350px !important;
+    background-color: transparent !important; /* Kein weißer Kreis beim Start! */
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Force sauberen weißen Hintergrund für den Hauptkreis im Dashboard */
+body.dashboard-active #main-btn-area {
     background-color: #ffffff !important;
     border-radius: 50% !important;
     overflow: hidden !important; 
+    border: 8px solid #f8fafc !important; /* border-slate-50 */
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
 }
 
@@ -147,13 +159,10 @@ body.cpr-mode-small #main-btn-area {
 body.cpr-mode-small #orbit-wrapper > div.relative {
     transform: translateY(-50px) !important;
 }
-body:not(.dashboard-active) #top-stats-container:not(.hidden) + #cpr-interface #orbit-wrapper > div.relative {
-    transform: translateY(-40px) !important;
-}
 
 /* Haptisches Feedback (Pochen beim Klicken) */
 body.dashboard-active #main-btn-area {
-    margin: 0 auto !important; border: none !important; box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important; cursor: pointer; 
+    margin: 0 auto !important; box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important; cursor: pointer; 
 }
 body.dashboard-active #main-btn-area:active {
     transform: scale(0.97) !important; box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important; filter: brightness(0.97) !important;
@@ -182,10 +191,16 @@ body.dashboard-active #main-btn-area:active {
 /* ==========================================
    8. KUGELSICHERES LAYOUT FÜR ALLE MENÜS (350px Screens)
    ========================================== */
-/* Zwingt ALLE Container in ein sauberes Flexbox-Raster! */
-#view-decision, #view-joule, #view-cpr-resume,
-#view-meds-menu, #view-airway, #view-zugang,
-#view-rosc-end, #view-abbruch-reason, #view-airway-doc {
+/* Zwingt ALLE Container in ein sauberes Flexbox-Raster (NUR IM DASHBOARD!) */
+body.dashboard-active #view-decision, 
+body.dashboard-active #view-joule, 
+body.dashboard-active #view-cpr-resume,
+body.dashboard-active #view-meds-menu, 
+body.dashboard-active #view-airway, 
+body.dashboard-active #view-zugang,
+body.dashboard-active #view-rosc-end, 
+body.dashboard-active #view-abbruch-reason, 
+body.dashboard-active #view-airway-doc {
     position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
     display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important;
     gap: 12px !important; padding: 20px !important; box-sizing: border-box !important;
@@ -194,24 +209,43 @@ body.dashboard-active #main-btn-area:active {
 }
 
 /* Deaktiviert alte Tailwind-Positionierungen (Hält die Buttons im Zaum) */
-#view-decision > *, #view-joule > *, #view-cpr-resume > *,
-#view-meds-menu > *, #view-airway > *, #view-zugang > *,
-#view-rosc-end > *, #view-abbruch-reason > *, #view-airway-doc > * {
+body.dashboard-active #view-decision > *, 
+body.dashboard-active #view-joule > *, 
+body.dashboard-active #view-cpr-resume > *,
+body.dashboard-active #view-meds-menu > *, 
+body.dashboard-active #view-airway > *, 
+body.dashboard-active #view-zugang > *,
+body.dashboard-active #view-rosc-end > *, 
+body.dashboard-active #view-abbruch-reason > *, 
+body.dashboard-active #view-airway-doc > * {
     position: static !important; transform: none !important; margin: 0 !important; width: auto !important;
 }
 
 /* Der ZURÜCK / BESTÄTIGEN Button klebt immer ganz sicher am unteren Rand! */
-#view-decision > button:last-child, #view-joule > button:last-child, #view-cpr-resume > button:last-child,
-#view-meds-menu > button:last-child, #view-airway > button:last-child, #view-zugang > button:last-child,
-#view-rosc-end > button:last-child, #view-abbruch-reason > button:last-child {
+body.dashboard-active #view-decision > button:last-child, 
+body.dashboard-active #view-joule > button:last-child, 
+body.dashboard-active #view-cpr-resume > button:last-child,
+body.dashboard-active #view-meds-menu > button:last-child, 
+body.dashboard-active #view-airway > button:last-child, 
+body.dashboard-active #view-zugang > button:last-child,
+body.dashboard-active #view-rosc-end > button:last-child, 
+body.dashboard-active #view-abbruch-reason > button:last-child {
     position: absolute !important; bottom: 25px !important; left: 50% !important; transform: translateX(-50%) !important;
 }
 
 /* Raster für Menü-Buttons */
-#view-joule > div, #view-meds-menu > div, #view-airway > div, #view-zugang > div, #view-abbruch-reason > div {
+body.dashboard-active #view-joule > div, 
+body.dashboard-active #view-meds-menu > div, 
+body.dashboard-active #view-airway > div, 
+body.dashboard-active #view-zugang > div, 
+body.dashboard-active #view-abbruch-reason > div {
     display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; width: 100% !important;
 }
-#view-joule > div > button, #view-meds-menu > div > button, #view-airway > div > button, #view-zugang > div > button, #view-abbruch-reason > div > button {
+body.dashboard-active #view-joule > div > button, 
+body.dashboard-active #view-meds-menu > div > button, 
+body.dashboard-active #view-airway > div > button, 
+body.dashboard-active #view-zugang > div > button, 
+body.dashboard-active #view-abbruch-reason > div > button {
     position: static !important; transform: none !important; margin: 0 !important;
 }
 
