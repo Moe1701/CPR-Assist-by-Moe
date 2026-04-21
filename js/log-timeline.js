@@ -1,8 +1,8 @@
 /**
- * CPR Assist - Log Timeline Modul (V19 - Single Container Edition)
+ * CPR Assist - Log Timeline Modul (V20 - Single Container Edition)
  * - Nutzt "protocol-list" als einzige Leinwand für alle 3 Tabs!
- * - Nutzt den MutationObserver (Wachhund) aus der funktionierenden V16.
- * - Inklusive vollautomatischer SBAR Übergabe!
+ * - Garantiert das Rendern von Zeitlinie, Liste und SBAR.
+ * - Inklusive getrennter Icons für Adrenalin & Amiodaron.
  */
 
 window.CPR = window.CPR || {};
@@ -10,7 +10,6 @@ window.CPR = window.CPR || {};
 window.CPR.LogTimeline = (function() {
     let currentView = 'list'; 
     let isRendering = false;
-    let renderTimeout = null;
 
     // --- 1. ICON LOGIK (Ordnet Texten Emojis zu) ---
     function getIconData(txt) {
@@ -25,14 +24,15 @@ window.CPR.LogTimeline = (function() {
         if (t.includes('zugang') || t.includes('i.v.') || t.includes('i.o.')) return { icon: '🩸', type: 'access', tooltip: txt };
         if (t.includes('rosc')) return { icon: '❤️', type: 'rosc', tooltip: txt };
         if (t.includes('start')) return { icon: '▶️', type: 'start', tooltip: txt };
-        if (t.includes('pause') || t.includes('fortgesetzt')) return null; 
+        if (t.includes('pause') || t.includes('fortgesetzt')) return null; // Pausen blenden wir für die Sauberkeit aus
         
         return { icon: '📝', type: 'generic', tooltip: txt };
     }
 
     // --- 2. SBAR ÜBERGABE GENERATOR ---
     function renderSummary() {
-        const container = document.getElementById('protocol-list'); // <--- DIE EINZIGE LEINWAND
+        // Zielt exakt auf die einzige Box in der HTML!
+        const container = document.getElementById('protocol-list'); 
         if (!container) return;
         
         const AppState = window.CPR.AppState || {};
@@ -52,8 +52,9 @@ window.CPR.LogTimeline = (function() {
         const patInfo = AppState.isPediatric ? `Kind (${AppState.patientWeight ? AppState.patientWeight+' kg' : 'Gewicht unb.'})` : 'Erwachsener';
 
         isRendering = true;
+        // Padding Bottom (pb-12) stellt sicher, dass man bis zum Ende scrollen kann!
         container.innerHTML = `
-            <div class="p-4 flex flex-col gap-3 bg-slate-50 min-h-full pb-10">
+            <div class="p-4 flex flex-col gap-3 bg-slate-50 min-h-full pb-12">
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                     <h4 class="text-[#E3000F] font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">S</span>Situation</h4>
                     <p class="text-sm font-bold text-slate-700 leading-tight">Laufende Reanimation seit <span class="text-[#E3000F]">${duration}</span> min. Bisher <span class="text-amber-500">${shocks}x geschockt</span>.</p>
@@ -77,11 +78,12 @@ window.CPR.LogTimeline = (function() {
             </div>
         `;
         isRendering = false;
+        container.scrollTop = 0; // Springt beim Tab-Wechsel nach oben
     }
 
     // --- 3. ZEITLINIEN GENERATOR ---
     function renderTimeline() {
-        const container = document.getElementById('protocol-list'); // <--- DIE EINZIGE LEINWAND
+        const container = document.getElementById('protocol-list'); 
         if (!container) return;
         const events = (window.CPR.AppState || {}).protocolData || [];
         
@@ -92,9 +94,10 @@ window.CPR.LogTimeline = (function() {
             return;
         }
 
-        let html = `<div class="p-4 bg-slate-50 min-h-full pb-10">`;
+        let html = `<div class="p-4 bg-slate-50 min-h-full pb-12">`;
         const totalMinutes = Math.max(1, Math.ceil(((window.CPR.AppState || {}).totalSeconds || 0) / 60));
 
+        // Legende
         html += `
             <div class="mb-4 flex flex-wrap gap-3 justify-center bg-white p-2 rounded-xl shadow-sm border border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                 <span class="flex items-center gap-1"><span class="text-sm">⚡</span> Schock</span>
@@ -145,12 +148,12 @@ window.CPR.LogTimeline = (function() {
         html += `</div></div>`;
         container.innerHTML = html;
         isRendering = false;
-        container.scrollTop = container.scrollHeight;
+        container.scrollTop = container.scrollHeight; // Autoscroll ans Ende
     }
 
     // --- 4. LISTEN GENERATOR ---
     function renderList() {
-        const container = document.getElementById('protocol-list'); // <--- DIE EINZIGE LEINWAND
+        const container = document.getElementById('protocol-list'); 
         if (!container) return;
         const events = (window.CPR.AppState || {}).protocolData || [];
         
@@ -161,7 +164,7 @@ window.CPR.LogTimeline = (function() {
             return;
         }
 
-        let html = `<div class="bg-white min-h-full pb-10">`;
+        let html = `<div class="bg-white min-h-full pb-12">`;
         events.forEach(item => {
             const mStr = Math.floor(item.secondsFromStart / 60).toString().padStart(2, '0');
             const sStr = (item.secondsFromStart % 60).toString().padStart(2, '0');
@@ -189,6 +192,7 @@ window.CPR.LogTimeline = (function() {
     function switchTab(tab) {
         currentView = tab;
         
+        // Buttons umfärben (Weiß leuchtend = Aktiv, Grau = Inaktiv)
         ['timeline', 'list', 'summary'].forEach(t => {
             const btn = document.getElementById('btn-view-' + t);
             if (btn) {
@@ -206,6 +210,7 @@ window.CPR.LogTimeline = (function() {
     }
 
     function init() {
+        // Exakte Bindung an die Button-IDs aus deiner HTML Datei
         const btnTime = document.getElementById('btn-view-timeline');
         if (btnTime) btnTime.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if(window.CPR.Utils) window.CPR.Utils.vibrate(20); switchTab('timeline'); });
         
@@ -215,22 +220,10 @@ window.CPR.LogTimeline = (function() {
         const btnSumm = document.getElementById('btn-view-summary');
         if (btnSumm) btnSumm.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if(window.CPR.Utils) window.CPR.Utils.vibrate(20); switchTab('summary'); });
 
+        // Wenn das Logbuch-Panel von unten hochfährt, Inhalt sofort rendern!
         const btnToggle = document.getElementById('btn-toggle-protocol');
         if (btnToggle) {
             btnToggle.addEventListener('click', () => { renderCurrentView(); });
-        }
-
-        // 🌟 DER ALTE WACHHUND (Verhindert, dass die app.js das Layout zerstört!)
-        const listEl = document.getElementById('protocol-list');
-        if (listEl) {
-            const observer = new MutationObserver((mutations) => {
-                if (isRendering) return; 
-                clearTimeout(renderTimeout);
-                renderTimeout = setTimeout(() => {
-                    renderCurrentView();
-                }, 50);
-            });
-            observer.observe(listEl, { childList: true });
         }
 
         // Setzt beim App-Start die Liste als aktiven Standard-Tab
@@ -244,7 +237,7 @@ window.CPR.LogTimeline = (function() {
 
 })();
 
-// Autostart
+// Autostart nach DOM-Laden
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         if (window.CPR && window.CPR.LogTimeline) window.CPR.LogTimeline.init();
