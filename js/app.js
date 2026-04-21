@@ -4,15 +4,18 @@
  * - UI UPGRADE: Millimetergenaue Y-Positionen verhindern jedes Herausrutschen!
  * - LOGIC FIX: Timer schaltet nicht mehr automatisch um, sondern eskaliert!
  * - ARCHITECTURE: Satelliten werden beim Öffnen von Menüs global ausgeblendet!
- * - TAB FIX: Bulletproof Mapper für SBAR/Übergabe!
+ * - TAB FIX: Bulletproof Render-Engine für das Übergabe (SBAR) Protokoll!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     const CPR = window.CPR;
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
 
+    // Globale Variable für den Tab-Status
+    window.CPR.currentProtocolView = 'list';
+
     // =========================================================
-    // 🌟 ABSOLUT-POSITIONIERUNG: Neues Layout mit Timer UNTER der Warnung
+    // 🌟 ABSOLUT-POSITIONIERUNG für den Timer Screen
     // =========================================================
     function remodelViewTimer() {
         const vt = document.getElementById('view-timer');
@@ -22,44 +25,41 @@ document.addEventListener('DOMContentLoaded', function() {
             
             vt.innerHTML = `
                 <!-- 1. Top: Bei Analyse drücken -->
-                <div class="absolute top-[35px] md:top-[40px] left-0 w-full flex justify-center items-center pointer-events-none">
-                    <span id="timer-top-text" class="text-[10px] md:text-[12px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap opacity-80 transition-colors duration-300">Bei Analyse drücken</span>
+                <div class="vt-top-text">
+                    <span id="timer-top-text">Bei Analyse drücken</span>
                 </div>
 
                 <!-- 2. Mitte: Der Timer -->
-                <div id="cycle-timer" class="absolute top-[70px] md:top-[80px] left-0 w-full text-center font-black text-[64px] md:text-[72px] leading-none text-slate-800 tracking-tighter pointer-events-none transition-colors duration-300" style="font-variant-numeric: tabular-nums;">
+                <div id="cycle-timer" class="vt-timer-display" style="font-variant-numeric: tabular-nums;">
                     02:00
                 </div>
 
                 <!-- 3. Unter dem Timer: Die Alerts -->
-                <!-- 30s Warnung -->
-                <div id="inner-prepare-alert" class="hidden absolute top-[140px] md:top-[150px] left-0 w-full flex-col items-center justify-center z-10 pointer-events-none">
-                    <div class="flex items-center gap-1.5 mb-0.5">
-                        <div class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></div>
-                        <span class="text-[10px] md:text-[11px] font-bold text-amber-500 uppercase tracking-widest whitespace-nowrap">Puls tasten, Defi laden</span>
+                <div id="inner-prepare-alert" class="hidden vt-alert-box">
+                    <div class="vt-alert-row">
+                        <div class="vt-alert-dot bg-amber-500 animate-ping"></div>
+                        <span class="vt-alert-txt text-amber-500">Puls tasten, Defi laden</span>
                     </div>
-                    <span id="prepare-time" class="text-2xl md:text-3xl font-black text-amber-500 leading-none mt-1">30</span>
+                    <span id="prepare-time" class="vt-alert-num text-amber-500">30</span>
                 </div>
 
-                <!-- 15s Warnung -->
-                <div id="inner-precharge-alert" class="hidden absolute top-[140px] md:top-[150px] left-0 w-full flex-col items-center justify-center z-10 pointer-events-none">
-                    <div class="flex items-center gap-1.5 mb-0.5">
-                        <div class="h-2 w-2 rounded-full bg-[#E3000F] animate-ping"></div>
-                        <span class="text-[10px] md:text-[11px] font-bold text-[#E3000F] uppercase tracking-widest whitespace-nowrap">Defi laden</span>
+                <div id="inner-precharge-alert" class="hidden vt-alert-box">
+                    <div class="vt-alert-row">
+                        <div class="vt-alert-dot bg-[#E3000F] animate-ping"></div>
+                        <span class="vt-alert-txt text-[#E3000F]">Defi laden</span>
                     </div>
-                    <span id="precharge-time" class="text-2xl md:text-3xl font-black text-[#E3000F] leading-none mt-1">15</span>
+                    <span id="precharge-time" class="vt-alert-num text-[#E3000F]">15</span>
                 </div>
 
-                <!-- 0s Warnung (NEU: Rhythmusanalyse fällig!) -->
-                <div id="inner-analyze-alert" class="hidden absolute top-[140px] md:top-[150px] left-0 w-full flex-col items-center justify-center z-10 pointer-events-none">
-                    <div class="px-4 py-1 bg-[#E3000F] rounded-full shadow-[0_0_15px_rgba(227,0,15,0.8)] animate-pulse mb-1">
-                        <span class="text-xs md:text-sm font-bold text-white uppercase tracking-widest whitespace-nowrap">Analyse Fällig</span>
+                <div id="inner-analyze-alert" class="hidden vt-alert-box">
+                    <div class="vt-analyze-badge animate-pulse">
+                        <span class="vt-analyze-txt">Analyse Fällig</span>
                     </div>
-                    <span class="text-[10px] font-bold text-[#E3000F] uppercase tracking-widest whitespace-nowrap">Jetzt hier drücken</span>
+                    <span class="vt-analyze-sub">Jetzt hier drücken</span>
                 </div>
 
                 <!-- 4. Unten: Schock Info -->
-                <div class="absolute bottom-[25px] md:bottom-[30px] left-0 w-full flex items-center justify-center text-xs md:text-sm font-bold text-slate-600 gap-2 pointer-events-none">
+                <div class="vt-bottom-info">
                     <i class="fa-solid fa-bolt text-amber-400"></i>
                     <span id="rhythm-info-shocks">${shocks}</span>
                     <span class="text-slate-300 mx-1">|</span>
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.classList.remove('center-menu-open');
         } else if (size === 'large') {
             document.body.classList.remove('cpr-mode-small');
-            document.body.classList.add('center-menu-open'); // Fadet alle Satelliten im CSS sauber aus!
+            document.body.classList.add('center-menu-open'); // Fadet alle Satelliten im CSS aus!
         }
     }
     window.CPR.navHelper = navHelper;
@@ -137,18 +137,84 @@ document.addEventListener('DOMContentLoaded', function() {
             secondsFromStart: AppState.totalSeconds || 0,
             action: txt
         });
-        
-        const list = document.getElementById('protocol-list');
-        if (list) {
-            const tempDiv = document.createElement('div');
-            const mStr = Math.floor(AppState.totalSeconds / 60).toString().padStart(2, '0');
-            const sStr = (AppState.totalSeconds % 60).toString().padStart(2, '0');
-            tempDiv.innerHTML = `<span class="text-[#E3000F] font-black">+${mStr}:${sStr}</span> <span class="text-slate-800 font-bold ml-2">${txt}</span>`;
-            list.appendChild(tempDiv);
-        }
         Utils.saveSession();
+
+        // Zeige den Eintrag nur an, wenn der User gerade wirklich die "Liste" ansieht!
+        if (window.CPR.currentProtocolView === 'list') {
+            renderProtocolView('list'); 
+        }
     }
     window.addLogEntry = addLogEntry;
+
+    // 🌟 TAB FIX: Bulletproof Render-Engine für das Protokoll
+    function renderProtocolView(viewName) {
+        window.CPR.currentProtocolView = viewName;
+        const container = document.getElementById('protocol-list');
+        if (!container) return;
+
+        container.innerHTML = ''; // Box komplett leeren
+
+        if (viewName === 'list') {
+            // RENDERE DIE NORMALE LISTE
+            if (AppState.protocolData && AppState.protocolData.length > 0) {
+                AppState.protocolData.forEach(item => {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.className = "flex items-start gap-3 p-3 border-b border-slate-100 bg-white";
+                    const mStr = Math.floor(item.secondsFromStart / 60).toString().padStart(2, '0');
+                    const sStr = (item.secondsFromStart % 60).toString().padStart(2, '0');
+                    tempDiv.innerHTML = `<span class="text-[#E3000F] font-black w-14 shrink-0">+${mStr}:${sStr}</span> <span class="text-slate-700 font-bold leading-tight">${item.action}</span>`;
+                    container.appendChild(tempDiv);
+                });
+            } else {
+                container.innerHTML = `<div class="p-6 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">Noch keine Einträge</div>`;
+            }
+        } 
+        else if (viewName === 'summary') {
+            // RENDERE DIE SBAR ÜBERGABE
+            const duration = Utils.formatTime(AppState.totalSeconds || 0);
+            const shocks = AppState.shockCount || 0;
+            const adr = AppState.adrCount || 0;
+            const amio = AppState.amioCount || 0;
+            const awLabel = document.getElementById('airway-label');
+            const aw = AppState.airwayEstablished ? (awLabel ? awLabel.innerText : 'Ja') : 'Nein';
+            const zugLabel = document.getElementById('zugang-label');
+            const zugang = (zugLabel && zugLabel.innerText !== 'Zugang') ? zugLabel.innerText : 'Nein';
+            const patInfo = AppState.isPediatric ? `Kind (${AppState.patientWeight ? AppState.patientWeight+' kg' : 'Gewicht unb.'})` : 'Erwachsener';
+            
+            container.innerHTML = `
+                <div class="p-4 flex flex-col gap-3 bg-slate-50 min-h-full">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                        <h4 class="text-[#E3000F] font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">S</span>Situation</h4>
+                        <p class="text-sm font-bold text-slate-700 leading-tight">Laufende Reanimation seit <span class="text-[#E3000F]">${duration}</span> min. Bisher <span class="text-amber-500">${shocks}x geschockt</span>.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                        <h4 class="text-blue-600 font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">B</span>Background</h4>
+                        <ul class="text-sm font-bold text-slate-700 space-y-1.5">
+                            <li class="flex gap-2"><i class="fa-solid fa-user text-slate-400 w-4 mt-0.5"></i> <span>${patInfo}</span></li>
+                            <li class="flex gap-2"><i class="fa-solid fa-droplet text-indigo-400 w-4 mt-0.5"></i> <span>Zugang: ${zugang}</span></li>
+                            <li class="flex gap-2"><i class="fa-solid fa-lungs text-cyan-500 w-4 mt-0.5"></i> <span>Atemweg: ${aw}</span></li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                        <h4 class="text-purple-600 font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">A</span>Assessment</h4>
+                        <p class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Medikamente verabreicht:</p>
+                        <div class="flex gap-2 flex-wrap">
+                            <span class="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-black text-slate-700 border border-slate-200">${adr}x Adrenalin</span>
+                            <span class="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-black text-slate-700 border border-slate-200">${amio}x Amiodaron</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        else if (viewName === 'timeline') {
+            // RENDERE DIE ZEITLINIE
+            container.innerHTML = `<div class="p-6 text-center text-slate-400 font-bold uppercase tracking-widest text-xs"><i class="fa-solid fa-clock-rotate-left text-3xl mb-2 block opacity-50"></i>Zeitlinie aktiv</div>`;
+            // Wenn der LogTimeline Code exisitiert, lassen wir ihn drüber zeichnen
+            if (window.CPR.LogTimeline && typeof window.CPR.LogTimeline.render === 'function') {
+                window.CPR.LogTimeline.render();
+            }
+        }
+    }
 
     function startMainTimer() {
         const topStats = document.getElementById('top-stats-container');
@@ -724,55 +790,54 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-export-log', (e) => { e.stopPropagation(); document.getElementById('export-modal')?.classList.replace('hidden', 'flex'); });
         addClick('btn-cancel-export', (e) => { e.stopPropagation(); document.getElementById('export-modal')?.classList.replace('flex', 'hidden'); });
 
-        // 🌟 KUGELSICHERER TAB-SWITCHER: Verbindet den Klick exakt mit der passenden Content-Box
-        const tabMapping = [
-            { triggers: ['btn-tab-zeitlinie', 'tab-zeitlinie'], targets: ['view-protocol-timeline', 'view-zeitlinie', 'content-zeitlinie'] },
-            { triggers: ['btn-tab-liste', 'tab-liste'], targets: ['view-protocol-list', 'view-liste', 'content-liste'] },
-            { triggers: ['btn-tab-uebergabe', 'tab-uebergabe'], targets: ['view-protocol-sbar', 'view-sbar', 'content-uebergabe', 'view-protocol-uebergabe'] }
-        ];
-
-        tabMapping.forEach(tabMap => {
-            tabMap.triggers.forEach(btnId => {
-                addClick(btnId, (e) => {
-                    e.stopPropagation();
-                    if(window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
+        // 🌟 TAB FIX: Greift die exakten IDs aus deiner index.html ab!
+        const tabs = ['timeline', 'list', 'summary'];
+        tabs.forEach(tab => {
+            const btnId = `btn-view-${tab}`; 
+            const btn = document.getElementById(btnId);
+            
+            if (btn) {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Wichtig, damit das Click-Event nicht weiter wandert
+                    if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
                     
-                    // 1. Alle Tabs grau machen und alle Inhalte verstecken
-                    tabMapping.forEach(t => {
-                        t.triggers.forEach(id => {
-                            const b = document.getElementById(id);
-                            if(b) { b.classList.remove('bg-white', 'shadow-sm', 'text-slate-800'); b.classList.add('text-slate-500', 'bg-transparent'); }
-                        });
-                        t.targets.forEach(id => {
-                            const v = document.getElementById(id);
-                            if(v) { v.classList.remove('flex', 'block'); v.classList.add('hidden'); }
-                        });
-                    });
-
-                    // 2. Den angeklickten Tab aktivieren (weiß)
-                    const activeBtn = document.getElementById(btnId);
-                    if(activeBtn) { activeBtn.classList.remove('text-slate-500', 'bg-transparent'); activeBtn.classList.add('bg-white', 'shadow-sm', 'text-slate-800'); }
-
-                    // 3. Den passenden Inhalt (SBAR/Liste/Timeline) einblenden
-                    tabMap.targets.forEach(id => {
-                        const activeView = document.getElementById(id);
-                        if(activeView) {
-                            activeView.classList.remove('hidden');
-                            if(activeView.classList.contains('flex-col')) activeView.classList.add('flex'); else activeView.classList.add('block');
+                    // 1. Alle Tabs optisch zurücksetzen (Grau machen)
+                    tabs.forEach(t => {
+                        const b = document.getElementById(`btn-view-${t}`);
+                        if (b) {
+                            b.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
+                            b.classList.add('text-slate-500', 'bg-transparent');
                         }
                     });
+                    
+                    // 2. Den geklickten Tab aktivieren (Weißer Kasten)
+                    btn.classList.remove('text-slate-500', 'bg-transparent');
+                    btn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
+                    
+                    // 3. Den passenden Inhalt via renderProtocolView direkt injizieren!
+                    renderProtocolView(tab);
                 });
-            });
+            }
         });
     }
 
     function initPanelEvents() {
-        addClick('btn-toggle-protocol', (e) => { e.stopPropagation(); document.getElementById('protocol-panel')?.classList.toggle('translate-y-full'); });
+        addClick('btn-toggle-protocol', (e) => { 
+            e.stopPropagation(); 
+            const panel = document.getElementById('protocol-panel');
+            if (panel) {
+                panel.classList.toggle('translate-y-full'); 
+                // Wenn das Panel geöffnet wird, lade den Inhalt des aktuellen Tabs
+                if (!panel.classList.contains('translate-y-full')) {
+                    renderProtocolView(window.CPR.currentProtocolView || 'list');
+                }
+            }
+        });
         addClick('btn-close-log', (e) => { e.stopPropagation(); document.getElementById('protocol-panel')?.classList.add('translate-y-full'); });
         addClick('btn-toggle-hits', (e) => { e.stopPropagation(); document.getElementById('hits-panel')?.classList.toggle('translate-y-full'); });
         addClick('btn-close-hits', (e) => { e.stopPropagation(); document.getElementById('hits-panel')?.classList.add('translate-y-full'); });
 
-        // Tab-Switcher für das HITS-Menü (Nicht Protokoll!)
+        // Tab-Switcher für das HITS-Menü
         addClick('btn-tab-hits', (e) => { e.stopPropagation(); e.target.classList.replace('text-slate-500', 'text-slate-800'); e.target.classList.add('bg-white', 'shadow-sm'); const tAna = document.getElementById('btn-tab-anamnese'); if(tAna) { tAna.classList.replace('text-slate-800', 'text-slate-500'); tAna.classList.remove('bg-white', 'shadow-sm'); } const vHits = document.getElementById('view-hits'); if(vHits) vHits.classList.replace('hidden', 'flex'); const vAna = document.getElementById('view-anamnese'); if(vAna) vAna.classList.replace('flex', 'hidden'); });
         addClick('btn-tab-anamnese', (e) => { e.stopPropagation(); e.target.classList.replace('text-slate-500', 'text-slate-800'); e.target.classList.add('bg-white', 'shadow-sm'); const tHits = document.getElementById('btn-tab-hits'); if(tHits) { tHits.classList.replace('text-slate-800', 'text-slate-500'); tHits.classList.remove('bg-white', 'shadow-sm'); } const vAna = document.getElementById('view-anamnese'); if(vAna) vAna.classList.replace('hidden', 'flex'); const vHits = document.getElementById('view-hits'); if(vHits) vHits.classList.replace('flex', 'hidden'); });
     }
@@ -870,18 +935,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 updateCprUI(); requestWakeLock();
                 if (AppState.adrSeconds > 0 && CPR.AdrTimer && typeof CPR.AdrTimer.start === 'function') CPR.AdrTimer.start(true); 
-            }
-            
-            const logContainer = document.getElementById('protocol-list');
-            if (logContainer && AppState.protocolData) {
-                logContainer.innerHTML = '';
-                AppState.protocolData.forEach(item => {
-                    const tempDiv = document.createElement('div');
-                    const mStr = Math.floor(item.secondsFromStart / 60).toString().padStart(2, '0');
-                    const sStr = (item.secondsFromStart % 60).toString().padStart(2, '0');
-                    tempDiv.innerHTML = `<span class="text-[#E3000F]">+${mStr}:${sStr}</span> <span class="text-slate-800">${item.action}</span>`;
-                    logContainer.appendChild(tempDiv);
-                });
             }
             
             Utils.sysLog("Session loaded successfully."); 
