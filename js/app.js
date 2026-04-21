@@ -3,16 +3,13 @@
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
  * - UI UPGRADE: Millimetergenaue Y-Positionen verhindern jedes Herausrutschen!
  * - LOGIC FIX: Timer schaltet nicht mehr automatisch um, sondern eskaliert!
- * - ARCHITECTURE: Satelliten werden beim Öffnen von Menüs global ausgeblendet!
- * - TAB FIX: Bulletproof Render-Engine für das Übergabe (SBAR) Protokoll!
+ * - ARCHITECTURE: Satelliten werden beim Öffnen von Menüs global im CSS ausgeblendet!
+ * - CLEANUP: Überlässt der log-timeline.js die volle Kontrolle über die Tabs.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     const CPR = window.CPR;
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
-
-    // Globale Variable für den Tab-Status
-    window.CPR.currentProtocolView = 'list';
 
     // =========================================================
     // 🌟 ABSOLUT-POSITIONIERUNG für den Timer Screen
@@ -71,7 +68,6 @@ document.addEventListener('DOMContentLoaded', function() {
     remodelViewTimer();
     // =========================================================
 
-    // 🌟 ARCHITEKTUR-FIX: Steuert das globale Sichtbarkeits-Konzept der Satelliten
     function navHelper(newState, viewId, size) {
         if (newState) { AppState.previousState = AppState.state; AppState.state = newState; }
         if (UI && typeof UI.switchView === 'function') { UI.switchView(viewId); }
@@ -82,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.classList.remove('center-menu-open');
         } else if (size === 'large') {
             document.body.classList.remove('cpr-mode-small');
-            document.body.classList.add('center-menu-open'); // Fadet alle Satelliten im CSS aus!
+            document.body.classList.add('center-menu-open'); 
         }
     }
     window.CPR.navHelper = navHelper;
@@ -130,6 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // 🌟 CLEANUP: Meldet neue Einträge direkt an die LogTimeline, ohne selbst ins HTML zu pfuschen!
     function addLogEntry(txt) {
         if (!AppState.protocolData) AppState.protocolData = [];
         AppState.protocolData.push({
@@ -139,82 +136,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         Utils.saveSession();
 
-        // Zeige den Eintrag nur an, wenn der User gerade wirklich die "Liste" ansieht!
-        if (window.CPR.currentProtocolView === 'list') {
-            renderProtocolView('list'); 
+        if (window.CPR.LogTimeline && typeof window.CPR.LogTimeline.forceRender === 'function') {
+            window.CPR.LogTimeline.forceRender();
         }
     }
     window.addLogEntry = addLogEntry;
-
-    // 🌟 TAB FIX: Bulletproof Render-Engine für das Protokoll
-    function renderProtocolView(viewName) {
-        window.CPR.currentProtocolView = viewName;
-        const container = document.getElementById('protocol-list');
-        if (!container) return;
-
-        container.innerHTML = ''; // Box komplett leeren
-
-        if (viewName === 'list') {
-            // RENDERE DIE NORMALE LISTE
-            if (AppState.protocolData && AppState.protocolData.length > 0) {
-                AppState.protocolData.forEach(item => {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.className = "flex items-start gap-3 p-3 border-b border-slate-100 bg-white";
-                    const mStr = Math.floor(item.secondsFromStart / 60).toString().padStart(2, '0');
-                    const sStr = (item.secondsFromStart % 60).toString().padStart(2, '0');
-                    tempDiv.innerHTML = `<span class="text-[#E3000F] font-black w-14 shrink-0">+${mStr}:${sStr}</span> <span class="text-slate-700 font-bold leading-tight">${item.action}</span>`;
-                    container.appendChild(tempDiv);
-                });
-            } else {
-                container.innerHTML = `<div class="p-6 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">Noch keine Einträge</div>`;
-            }
-        } 
-        else if (viewName === 'summary') {
-            // RENDERE DIE SBAR ÜBERGABE
-            const duration = Utils.formatTime(AppState.totalSeconds || 0);
-            const shocks = AppState.shockCount || 0;
-            const adr = AppState.adrCount || 0;
-            const amio = AppState.amioCount || 0;
-            const awLabel = document.getElementById('airway-label');
-            const aw = AppState.airwayEstablished ? (awLabel ? awLabel.innerText : 'Ja') : 'Nein';
-            const zugLabel = document.getElementById('zugang-label');
-            const zugang = (zugLabel && zugLabel.innerText !== 'Zugang') ? zugLabel.innerText : 'Nein';
-            const patInfo = AppState.isPediatric ? `Kind (${AppState.patientWeight ? AppState.patientWeight+' kg' : 'Gewicht unb.'})` : 'Erwachsener';
-            
-            container.innerHTML = `
-                <div class="p-4 flex flex-col gap-3 bg-slate-50 min-h-full">
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                        <h4 class="text-[#E3000F] font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">S</span>Situation</h4>
-                        <p class="text-sm font-bold text-slate-700 leading-tight">Laufende Reanimation seit <span class="text-[#E3000F]">${duration}</span> min. Bisher <span class="text-amber-500">${shocks}x geschockt</span>.</p>
-                    </div>
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                        <h4 class="text-blue-600 font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">B</span>Background</h4>
-                        <ul class="text-sm font-bold text-slate-700 space-y-1.5">
-                            <li class="flex gap-2"><i class="fa-solid fa-user text-slate-400 w-4 mt-0.5"></i> <span>${patInfo}</span></li>
-                            <li class="flex gap-2"><i class="fa-solid fa-droplet text-indigo-400 w-4 mt-0.5"></i> <span>Zugang: ${zugang}</span></li>
-                            <li class="flex gap-2"><i class="fa-solid fa-lungs text-cyan-500 w-4 mt-0.5"></i> <span>Atemweg: ${aw}</span></li>
-                        </ul>
-                    </div>
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                        <h4 class="text-purple-600 font-black uppercase tracking-widest text-xs border-b border-slate-100 pb-2 mb-2"><span class="text-xl mr-2">A</span>Assessment</h4>
-                        <p class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Medikamente verabreicht:</p>
-                        <div class="flex gap-2 flex-wrap">
-                            <span class="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-black text-slate-700 border border-slate-200">${adr}x Adrenalin</span>
-                            <span class="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-black text-slate-700 border border-slate-200">${amio}x Amiodaron</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        else if (viewName === 'timeline') {
-            // RENDERE DIE ZEITLINIE
-            container.innerHTML = `<div class="p-6 text-center text-slate-400 font-bold uppercase tracking-widest text-xs"><i class="fa-solid fa-clock-rotate-left text-3xl mb-2 block opacity-50"></i>Zeitlinie aktiv</div>`;
-            // Wenn der LogTimeline Code exisitiert, lassen wir ihn drüber zeichnen
-            if (window.CPR.LogTimeline && typeof window.CPR.LogTimeline.render === 'function') {
-                window.CPR.LogTimeline.render();
-            }
-        }
-    }
 
     function startMainTimer() {
         const topStats = document.getElementById('top-stats-container');
@@ -785,40 +711,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 🌟 CLEANUP: App.js feuert nur noch Befehle. Die Tab-Klicks werden von log-timeline.js verwaltet!
     function initProtocolEvents() {
-        addClick('btn-undo-log', (e) => { e.stopPropagation(); Utils.vibrate(20); if (AppState.protocolData && AppState.protocolData.length > 0) { AppState.protocolData.pop(); const rawList = document.getElementById('protocol-list'); if (rawList && rawList.lastChild) rawList.removeChild(rawList.lastChild); Utils.saveSession(); } else { Utils.showDialog('alert', 'Info', 'Das Protokoll ist bereits leer.'); } });
+        addClick('btn-undo-log', (e) => { 
+            e.stopPropagation(); 
+            Utils.vibrate(20); 
+            if (AppState.protocolData && AppState.protocolData.length > 0) { 
+                AppState.protocolData.pop(); 
+                Utils.saveSession(); 
+                if (window.CPR.LogTimeline && typeof window.CPR.LogTimeline.forceRender === 'function') window.CPR.LogTimeline.forceRender();
+            } else { 
+                Utils.showDialog('alert', 'Info', 'Das Protokoll ist bereits leer.'); 
+            } 
+        });
         addClick('btn-export-log', (e) => { e.stopPropagation(); document.getElementById('export-modal')?.classList.replace('hidden', 'flex'); });
         addClick('btn-cancel-export', (e) => { e.stopPropagation(); document.getElementById('export-modal')?.classList.replace('flex', 'hidden'); });
-
-        // 🌟 TAB FIX: Greift die exakten IDs aus deiner index.html ab!
-        const tabs = ['timeline', 'list', 'summary'];
-        tabs.forEach(tab => {
-            const btnId = `btn-view-${tab}`; 
-            const btn = document.getElementById(btnId);
-            
-            if (btn) {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Wichtig, damit das Click-Event nicht weiter wandert
-                    if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
-                    
-                    // 1. Alle Tabs optisch zurücksetzen (Grau machen)
-                    tabs.forEach(t => {
-                        const b = document.getElementById(`btn-view-${t}`);
-                        if (b) {
-                            b.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
-                            b.classList.add('text-slate-500', 'bg-transparent');
-                        }
-                    });
-                    
-                    // 2. Den geklickten Tab aktivieren (Weißer Kasten)
-                    btn.classList.remove('text-slate-500', 'bg-transparent');
-                    btn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
-                    
-                    // 3. Den passenden Inhalt via renderProtocolView direkt injizieren!
-                    renderProtocolView(tab);
-                });
-            }
-        });
     }
 
     function initPanelEvents() {
@@ -827,17 +734,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const panel = document.getElementById('protocol-panel');
             if (panel) {
                 panel.classList.toggle('translate-y-full'); 
-                // Wenn das Panel geöffnet wird, lade den Inhalt des aktuellen Tabs
+                // Wenn das Panel hochfährt, zwingen wir LogTimeline zum Zeichnen der aktuellen Daten!
                 if (!panel.classList.contains('translate-y-full')) {
-                    renderProtocolView(window.CPR.currentProtocolView || 'list');
+                    if (window.CPR.LogTimeline && typeof window.CPR.LogTimeline.forceRender === 'function') window.CPR.LogTimeline.forceRender();
                 }
             }
         });
         addClick('btn-close-log', (e) => { e.stopPropagation(); document.getElementById('protocol-panel')?.classList.add('translate-y-full'); });
+        
         addClick('btn-toggle-hits', (e) => { e.stopPropagation(); document.getElementById('hits-panel')?.classList.toggle('translate-y-full'); });
         addClick('btn-close-hits', (e) => { e.stopPropagation(); document.getElementById('hits-panel')?.classList.add('translate-y-full'); });
 
-        // Tab-Switcher für das HITS-Menü
+        // Tab-Switcher für das HITS-Menü bleibt unangetastet
         addClick('btn-tab-hits', (e) => { e.stopPropagation(); e.target.classList.replace('text-slate-500', 'text-slate-800'); e.target.classList.add('bg-white', 'shadow-sm'); const tAna = document.getElementById('btn-tab-anamnese'); if(tAna) { tAna.classList.replace('text-slate-800', 'text-slate-500'); tAna.classList.remove('bg-white', 'shadow-sm'); } const vHits = document.getElementById('view-hits'); if(vHits) vHits.classList.replace('hidden', 'flex'); const vAna = document.getElementById('view-anamnese'); if(vAna) vAna.classList.replace('flex', 'hidden'); });
         addClick('btn-tab-anamnese', (e) => { e.stopPropagation(); e.target.classList.replace('text-slate-500', 'text-slate-800'); e.target.classList.add('bg-white', 'shadow-sm'); const tHits = document.getElementById('btn-tab-hits'); if(tHits) { tHits.classList.replace('text-slate-800', 'text-slate-500'); tHits.classList.remove('bg-white', 'shadow-sm'); } const vAna = document.getElementById('view-anamnese'); if(vAna) vAna.classList.replace('hidden', 'flex'); const vHits = document.getElementById('view-hits'); if(vHits) vHits.classList.replace('flex', 'hidden'); });
     }
@@ -936,7 +844,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateCprUI(); requestWakeLock();
                 if (AppState.adrSeconds > 0 && CPR.AdrTimer && typeof CPR.AdrTimer.start === 'function') CPR.AdrTimer.start(true); 
             }
-            
+
+            // Sicherstellen, dass das Protokoll nach dem Laden der Session sofort gerendert wird
+            if (window.CPR.LogTimeline && typeof window.CPR.LogTimeline.forceRender === 'function') window.CPR.LogTimeline.forceRender();
             Utils.sysLog("Session loaded successfully."); 
             return true;
         } catch (e) { 
