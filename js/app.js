@@ -68,17 +68,25 @@ document.addEventListener('DOMContentLoaded', function() {
     remodelViewTimer();
     // =========================================================
 
+    // 🌟 ARCHITEKTUR-FIX: Steuert das globale Sichtbarkeits-Konzept der Satelliten
     function navHelper(newState, viewId, size) {
         if (newState) { AppState.previousState = AppState.state; AppState.state = newState; }
-        if (UI && typeof UI.switchView === 'function') { UI.switchView(viewId); }
-        if (UI && typeof UI.setCenterSize === 'function' && size) { UI.setCenterSize(size); }
-
-        if (size === 'small') {
-            document.body.classList.add('cpr-mode-small');
-            document.body.classList.remove('center-menu-open');
-        } else if (size === 'large') {
-            document.body.classList.remove('cpr-mode-small');
-            document.body.classList.add('center-menu-open'); 
+        
+        if (UI && typeof UI.switchView === 'function') { 
+            UI.switchView(viewId); 
+        }
+        
+        // Entweder über UI.js oder als direkter Fallback:
+        if (UI && typeof UI.setCenterSize === 'function' && size) { 
+            UI.setCenterSize(size); 
+        } else if (size) {
+            if (size === 'small') {
+                document.body.classList.add('cpr-mode-small');
+                document.body.classList.remove('center-menu-open');
+            } else if (size === 'large') {
+                document.body.classList.remove('cpr-mode-small');
+                document.body.classList.add('center-menu-open');
+            }
         }
     }
     window.CPR.navHelper = navHelper;
@@ -873,8 +881,14 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         if (loadSession()) {
             const st = AppState.state || 'IDLE'; 
-            if (st !== 'IDLE' && st.indexOf('OB_') !== 0 && UI && typeof UI.updateOrbitGeometry === 'function') {
-                UI.updateOrbitGeometry('small');
+            // Nach dem Laden prüfen, ob wir im Timer sind -> Kreis klein machen!
+            if (st !== 'IDLE' && st.indexOf('OB_') !== 0) {
+                if (st === 'RUNNING') {
+                    if (UI && typeof UI.updateOrbitGeometry === 'function') UI.updateOrbitGeometry('small');
+                    navHelper(null, null, 'small');
+                } else {
+                    navHelper(null, null, 'large');
+                }
             }
         }
     }, 100);
