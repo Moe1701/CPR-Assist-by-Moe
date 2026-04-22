@@ -16,13 +16,13 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
    3. RESPONSIVES KREIS-MENÜ (Variablen)
    ========================================== */
 :root {
-    /* MOBILE FIRST (Handys) - MAX CENTER OPTIMIZED */
-    --sat-size: 70px;        /* 2px geklaut (Radius 35px) */
-    --orbit-radius: 160px;   /* 117px (Zentrum) + 8px (Gap) + 35px (Sat) */
+    /* MOBILE FIRST (Handys) - FINE-TUNED GEOMETRY */
+    --sat-size: 70px;        /* Bleibt bei 70px (Radius 35px) */
+    --orbit-radius: 162px;   /* 2px weiter nach außen an den Rand gezogen! */
     --main-size: 85px;
-    --main-x: 110px;         /* Perfekt an den Orbit angepasst */
+    --main-x: 112px;         /* Sanft an den gewachsenen Orbit angepasst */
     --main-y: 245px;         
-    --center-btn-size: 234px;/* Wieder fett auf 234px! (Radius 117px) */
+    --center-btn-size: 228px;/* Zentraler Timer auf exakt 228px reduziert */
 }
 
 @media (min-width: 768px) {
