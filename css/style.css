@@ -16,22 +16,22 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
    3. RESPONSIVES KREIS-MENÜ (Variablen)
    ========================================== */
 :root {
-    /* MOBILE FIRST (Handys) - SAFE FIBONACCI (Anti-Scroll) */
-    --sat-size: 76px;
-    --orbit-radius: 174px;   /* 115px (Zentrum) + 21px (Gap) + 38px (Sat) */
+    /* MOBILE FIRST (Handys) - COMPACT SAFE (Randabstand) */
+    --sat-size: 72px;        /* Satelliten minimal verkleinert, für mehr Randabstand */
+    --orbit-radius: 165px;   /* 117px (Zentrum) + 12px (Gap) + 36px (Sat) */
     --main-size: 85px;
-    --main-x: 125px;         /* Mehr zur Seite geschoben... */
-    --main-y: 255px;         /* ...damit Y sicher oben bleibt und nichts abschneidet! */
-    --center-btn-size: 230px;
+    --main-x: 118px;         /* Die unteren Buttons ziehen leicht nach innen mit */
+    --main-y: 255px;         
+    --center-btn-size: 234px;/* Der laufende Timer: Exakt berechneter Wunsch-Wert! */
 }
 
 @media (min-width: 768px) {
     :root {
-        /* iPAD & TABLET - SAFE FIBONACCI */
-        --sat-size: 90px;
-        --orbit-radius: 204px;
+        /* iPAD & TABLET */
+        --sat-size: 86px;
+        --orbit-radius: 200px;
         --main-size: 100px;
-        --main-x: 140px;
+        --main-x: 135px;
         --main-y: 290px;
         --center-btn-size: 250px;
     }
@@ -113,7 +113,7 @@ body.debug-mode #orbit-wrapper > div::before { content: ''; position: absolute; 
 
 #orbit-wrapper > div.relative {
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    transform: translateY(-50px) !important; /* HIER IST DAS UPGRADE: Gesamtes Dashboard 50px höher! */
+    transform: translateY(-50px) !important; /* Gesamtes Dashboard 50px höher! */
 }
 
 /* 🌟 DER MASTER-KREIS (Immer als Kreis gerendert, auch im Onboarding) 🌟 */
@@ -121,6 +121,7 @@ body.debug-mode #orbit-wrapper > div::before { content: ''; position: absolute; 
     background-color: #ffffff !important;
     border-radius: 50% !important;
     overflow: hidden !important; 
+    /* ACHTUNG: border-8 wurde hier absichtlich entfernt, für den nahtlosen Kanten-Look! */
     box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important;
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
 }
@@ -141,7 +142,7 @@ body.center-menu-open #main-btn-area {
     body.center-menu-open #main-btn-area { width: 400px !important; height: 400px !important; }
 }
 
-/* KREIS KLEIN: CPR-Timer läuft (230px) */
+/* KREIS KLEIN: CPR-Timer läuft (234px) */
 body.dashboard-active.cpr-mode-small #orbit-wrapper > div.relative,
 body.dashboard-active.cpr-mode-small #main-btn-area {
     width: var(--center-btn-size) !important;
@@ -149,7 +150,7 @@ body.dashboard-active.cpr-mode-small #main-btn-area {
     z-index: 55 !important;
 }
 body.dashboard-active.cpr-mode-small #orbit-wrapper > div.relative {
-    /* HIER IST DAS UPGRADE: Basis -50px, plus die bisherigen -40px für den Timer-Modus = -90px! */
+    /* Basis -50px, plus die -40px für den Timer-Modus = -90px! */
     transform: translateY(-90px) !important; 
 }
 
