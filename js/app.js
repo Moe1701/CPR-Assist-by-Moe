@@ -1,9 +1,8 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
- * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
- * - UI UPGRADE: Millimetergenaue Y-Positionen verhindern jedes Herausrutschen!
- * - LOGIC FIX: Timer-Start Parameter-Inversion (Resume vs Reset) ist korrigiert!
- * - ARCHITECTURE: Satelliten werden beim Öffnen von Menüs global im CSS ausgeblendet!
+ * BUGFIX: Event-Listener Blockade auf dem Analyse-Button behoben!
+ * CLEANUP: Zerstörerische remodelViewTimer-Funktion restlos entfernt.
+ * LOGIC FIX: Timer-Start Parameter-Inversion (Resume vs Reset) ist korrigiert!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -125,17 +124,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 200);
     }
 
-    // 🌟 BUGFIX: Parameter `shouldResetTimer` eingeführt, der die Logik sauber an start(resume) übergibt!
-    function activateDashboard(shouldResetTimer = false) {
+    function activateDashboard(shouldResetTimer = true) {
         document.body.classList.add('dashboard-active');
         const sats = document.getElementById('satellites'); if (sats) sats.classList.remove('hidden');
         ['btn-airway', 'btn-cpr'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('opacity-0', 'pointer-events-none'); });
         if (UI && typeof UI.recalcMeds === 'function') UI.recalcMeds();
         AppState.isRunning = true;
         
+        // 🌟 LOGIK-FIX: Wenn shouldResetTimer = true, darf er NICHT resumen (!shouldResetTimer)
         if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
-            // start() erwartet einen Parameter "resume". 
-            // Wenn wir den Timer resetten wollen (shouldResetTimer = true), darf er NICHT resumen (resume = false).
             const resume = !shouldResetTimer;
             CPR.CPRTimer.start(resume);
         }
@@ -465,7 +462,6 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-breaths-done', (e) => { e.stopPropagation(); Utils.vibrate(40); addLogEntry("5 initiale Beatmungen durchgeführt"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
         addClick('btn-breaths-skipped', (e) => { e.stopPropagation(); Utils.vibrate([30, 50]); addLogEntry("5 initiale Beatmungen übersprungen"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
 
-        // 🌟 START DES TIMERS: Wirft den Timer nun korrekt mit reset = true an!
         addClick('btn-confirm-cpr', (e) => { 
             e.stopPropagation(); 
             Utils.vibrate([40, 40]); 
@@ -476,7 +472,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         addClick('main-btn-area', (e) => {
-            if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
+            const isAnalyzeBtn = e.target.closest('#btn-permanent-analyze');
+            if (!isAnalyzeBtn && (e.target.closest('button') || e.target.closest('select') || e.target.closest('input'))) return;
             if (Date.now() - (Globals.lastMenuAction || 0) < 500) return;
             
             if (AppState.state === 'OB_COMPRESSIONS') { 
@@ -503,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation(); Utils.vibrate(30); markMenuAction();
             if (AppState.previousState === 'RUNNING') { 
                 navHelper('RUNNING', 'view-timer', 'small'); 
-                if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') CPR.CPRTimer.start(true); // RESUME!
+                if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') CPR.CPRTimer.start(true); 
                 updateCprUI(); 
             } 
             else { navHelper('OB_ANALYZE', 'view-ob-3', 'large'); }
@@ -559,7 +556,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.CPR.UI.updateAdrenalinBadge();
                 }
                 if (window.CPR.AdrTimer && typeof window.CPR.AdrTimer.start === 'function') {
-                    window.CPR.AdrTimer.start(true); // RESUME true für Adrenalin Logik
+                    window.CPR.AdrTimer.start(true); 
                 }
                 if (window.CPR.Utils && typeof window.CPR.Utils.saveSession === 'function') {
                     window.CPR.Utils.saveSession();
@@ -797,8 +794,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (AppState.isRunning !== false) { 
                     startMainTimer(); 
-                    // 🌟 BUGFIX: Beim Session Load wollen wir RESUMEN (also True)
                     if (AppState.state === 'RUNNING' && CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
+                        // 🌟 LOGIK-FIX: Beim Neuladen der Session MUSS der Timer resumen (true)
                         CPR.CPRTimer.start(true); 
                     } else if (CPR.CPRTimer && typeof CPR.CPRTimer.updateUI === 'function') {
                         CPR.CPRTimer.updateUI();
