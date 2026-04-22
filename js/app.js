@@ -2,16 +2,14 @@
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
  * - PING-PONG: Das dynamische Zusammenspiel zwischen CPR und Beatmung ist aktiv!
  * - UI UPGRADE: Millimetergenaue Y-Positionen verhindern jedes Herausrutschen!
- * - LOGIC FIX: Timer schaltet nicht mehr automatisch um, sondern eskaliert!
+ * - LOGIC FIX: Timer-Start Parameter-Inversion (Resume vs Reset) ist korrigiert!
  * - ARCHITECTURE: Satelliten werden beim Öffnen von Menüs global im CSS ausgeblendet!
- * - CLEANUP: Überlässt der log-timeline.js die volle Kontrolle über die Tabs.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     const CPR = window.CPR;
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
 
-    // 🌟 ARCHITEKTUR-FIX: Steuert das globale Sichtbarkeits-Konzept der Satelliten
     function navHelper(newState, viewId, size) {
         if (newState) { AppState.previousState = AppState.state; AppState.state = newState; }
         
@@ -19,7 +17,6 @@ document.addEventListener('DOMContentLoaded', function() {
             UI.switchView(viewId); 
         }
         
-        // Entweder über UI.js oder als direkter Fallback:
         if (UI && typeof UI.setCenterSize === 'function' && size) { 
             UI.setCenterSize(size); 
         } else if (size) {
@@ -77,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 🌟 CLEANUP: Meldet neue Einträge direkt an die LogTimeline, ohne selbst ins HTML zu pfuschen!
     function addLogEntry(txt) {
         if (!AppState.protocolData) AppState.protocolData = [];
         AppState.protocolData.push({
@@ -129,13 +125,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 200);
     }
 
-    function activateDashboard(resetTimer = false) {
+    // 🌟 BUGFIX: Parameter `shouldResetTimer` eingeführt, der die Logik sauber an start(resume) übergibt!
+    function activateDashboard(shouldResetTimer = false) {
         document.body.classList.add('dashboard-active');
         const sats = document.getElementById('satellites'); if (sats) sats.classList.remove('hidden');
         ['btn-airway', 'btn-cpr'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('opacity-0', 'pointer-events-none'); });
         if (UI && typeof UI.recalcMeds === 'function') UI.recalcMeds();
         AppState.isRunning = true;
-        if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') CPR.CPRTimer.start(resetTimer);
+        
+        if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
+            // start() erwartet einen Parameter "resume". 
+            // Wenn wir den Timer resetten wollen (shouldResetTimer = true), darf er NICHT resumen (resume = false).
+            const resume = !shouldResetTimer;
+            CPR.CPRTimer.start(resume);
+        }
         navHelper('RUNNING', 'view-timer', 'small');
     }
 
@@ -462,8 +465,7 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-breaths-done', (e) => { e.stopPropagation(); Utils.vibrate(40); addLogEntry("5 initiale Beatmungen durchgeführt"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
         addClick('btn-breaths-skipped', (e) => { e.stopPropagation(); Utils.vibrate([30, 50]); addLogEntry("5 initiale Beatmungen übersprungen"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); });
 
-        // 🌟 FIX 1: Dieser extrem wichtige Handler fehlte komplett in der alten Datei! 
-        // Ohne diesen Klick-Befehl startete der Timer beim ersten Zyklus überhaupt nicht.
+        // 🌟 START DES TIMERS: Wirft den Timer nun korrekt mit reset = true an!
         addClick('btn-confirm-cpr', (e) => { 
             e.stopPropagation(); 
             Utils.vibrate([40, 40]); 
@@ -499,7 +501,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         addClick('btn-decision-cancel', (e) => {
             e.stopPropagation(); Utils.vibrate(30); markMenuAction();
-            if (AppState.previousState === 'RUNNING') { navHelper('RUNNING', 'view-timer', 'small'); if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') CPR.CPRTimer.start(true); updateCprUI(); } 
+            if (AppState.previousState === 'RUNNING') { 
+                navHelper('RUNNING', 'view-timer', 'small'); 
+                if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') CPR.CPRTimer.start(true); // RESUME!
+                updateCprUI(); 
+            } 
             else { navHelper('OB_ANALYZE', 'view-ob-3', 'large'); }
         });
 
@@ -553,7 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.CPR.UI.updateAdrenalinBadge();
                 }
                 if (window.CPR.AdrTimer && typeof window.CPR.AdrTimer.start === 'function') {
-                    window.CPR.AdrTimer.start(); 
+                    window.CPR.AdrTimer.start(true); // RESUME true für Adrenalin Logik
                 }
                 if (window.CPR.Utils && typeof window.CPR.Utils.saveSession === 'function') {
                     window.CPR.Utils.saveSession();
@@ -791,8 +797,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (AppState.isRunning !== false) { 
                     startMainTimer(); 
+                    // 🌟 BUGFIX: Beim Session Load wollen wir RESUMEN (also True)
                     if (AppState.state === 'RUNNING' && CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
-                        CPR.CPRTimer.start(); 
+                        CPR.CPRTimer.start(true); 
                     } else if (CPR.CPRTimer && typeof CPR.CPRTimer.updateUI === 'function') {
                         CPR.CPRTimer.updateUI();
                     }
