@@ -164,7 +164,6 @@ window.CPR.UI = (function() {
             }
         },
 
-        // 🌟 CHIRURGISCHER SCHNITT: Native DOM-Steuerung für 100% Sichtbarkeit 🌟
         updateAdrenalinBadge: function() {
             const badge = document.getElementById('adr-count-badge');
             if (!badge) return;
@@ -172,7 +171,7 @@ window.CPR.UI = (function() {
             const count = window.CPR.AppState ? (window.CPR.AppState.adrCount || 0) : 0;
             
             if (count > 0) {
-                badge.style.display = 'flex'; // Unangreifbar gegen CSS
+                badge.style.display = 'flex';
                 badge.innerText = count; 
             } else {
                 badge.style.display = 'none';
@@ -238,7 +237,6 @@ window.CPR.UI = (function() {
             const adrText = document.getElementById('adr-text-2');
             if (adrBtn && adrText) {
                 if (isPedi && kg) {
-                    // NEU: Berechnung in Mikrogramm für Kinder! (10 µg pro kg)
                     const doseUg = Math.round(kg * 10); 
                     const dose = doseUg + ' µg';
                     adrBtn.dataset.dose = dose;
@@ -326,6 +324,7 @@ window.CPR.UI = (function() {
             this.updateSmartMedsButton();
         },
 
+        // 🌟 PERFEKTE LINIEN-GEOMETRIE (-2 Pixel Update) 🌟
         updateCircle: function(canvasId, pct, color) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
@@ -334,7 +333,13 @@ window.CPR.UI = (function() {
             const w = canvas.width;
             const h = canvas.height;
             const center = w / 2;
-            const r = center - 8; 
+
+            // Haupt-Ring ist 8px, Satellit ist 4px.
+            const isMain = (canvasId === 'progress-circle');
+            const lineW = isMain ? 8 : 4; 
+            
+            // Berechnung: Damit der Strich genau bündig mit der runden Kante abschließt
+            const r = center - (lineW / 2); 
 
             ctx.clearRect(0, 0, w, h);
             
@@ -342,7 +347,7 @@ window.CPR.UI = (function() {
                 ctx.beginPath();
                 ctx.arc(center, center, r, 0, 2 * Math.PI * pct);
                 ctx.strokeStyle = color || '#E3000F';
-                ctx.lineWidth = canvasId === 'progress-circle' ? 10 : 6;
+                ctx.lineWidth = lineW;
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
