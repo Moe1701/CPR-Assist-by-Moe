@@ -16,13 +16,13 @@ body { overscroll-behavior-y: none; background-color: #f8fafc; }
    3. RESPONSIVES KREIS-MENÜ (Variablen)
    ========================================== */
 :root {
-    /* MOBILE FIRST (Handys) - COMPACT SAFE (Randabstand) */
-    --sat-size: 72px;        /* Satelliten minimal verkleinert, für mehr Randabstand */
-    --orbit-radius: 165px;   /* 117px (Zentrum) + 12px (Gap) + 36px (Sat) */
+    /* MOBILE FIRST (Handys) - MAX CENTER OPTIMIZED */
+    --sat-size: 70px;        /* 2px geklaut (Radius 35px) */
+    --orbit-radius: 160px;   /* 117px (Zentrum) + 8px (Gap) + 35px (Sat) */
     --main-size: 85px;
-    --main-x: 118px;         /* Die unteren Buttons ziehen leicht nach innen mit */
-    --main-y: 255px;         
-    --center-btn-size: 234px;/* Der laufende Timer: Exakt berechneter Wunsch-Wert! */
+    --main-x: 110px;         /* Perfekt an den Orbit angepasst */
+    --main-y: 245px;         
+    --center-btn-size: 234px;/* Wieder fett auf 234px! (Radius 117px) */
 }
 
 @media (min-width: 768px) {
@@ -113,7 +113,7 @@ body.debug-mode #orbit-wrapper > div::before { content: ''; position: absolute; 
 
 #orbit-wrapper > div.relative {
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    transform: translateY(-50px) !important; /* Gesamtes Dashboard 50px höher! */
+    transform: translateY(-50px) !important; 
 }
 
 /* 🌟 DER MASTER-KREIS (Immer als Kreis gerendert, auch im Onboarding) 🌟 */
@@ -121,7 +121,6 @@ body.debug-mode #orbit-wrapper > div::before { content: ''; position: absolute; 
     background-color: #ffffff !important;
     border-radius: 50% !important;
     overflow: hidden !important; 
-    /* ACHTUNG: border-8 wurde hier absichtlich entfernt, für den nahtlosen Kanten-Look! */
     box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important;
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
 }
@@ -142,7 +141,7 @@ body.center-menu-open #main-btn-area {
     body.center-menu-open #main-btn-area { width: 400px !important; height: 400px !important; }
 }
 
-/* KREIS KLEIN: CPR-Timer läuft (234px) */
+/* KREIS KLEIN: CPR-Timer läuft */
 body.dashboard-active.cpr-mode-small #orbit-wrapper > div.relative,
 body.dashboard-active.cpr-mode-small #main-btn-area {
     width: var(--center-btn-size) !important;
@@ -150,7 +149,6 @@ body.dashboard-active.cpr-mode-small #main-btn-area {
     z-index: 55 !important;
 }
 body.dashboard-active.cpr-mode-small #orbit-wrapper > div.relative {
-    /* Basis -50px, plus die -40px für den Timer-Modus = -90px! */
     transform: translateY(-90px) !important; 
 }
 
@@ -175,7 +173,7 @@ body.dashboard-active.cpr-mode-small #orbit-wrapper > div.relative {
 .vt-bottom-info { position: absolute; bottom: 25px; left: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 800; color: #475569; pointer-events: none; }
 
 /* ==========================================
-   8. MENÜ-CONTAINER (SAUBER! Zerschießt keine Tailwind-Grids mehr!)
+   8. MENÜ-CONTAINER
    ========================================== */
 #view-decision:not(.hidden), 
 #view-joule:not(.hidden), 
