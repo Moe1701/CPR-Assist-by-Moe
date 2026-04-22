@@ -27,11 +27,9 @@ window.CPR.UI = (function() {
             const targetEl = document.getElementById(targetId);
             if (targetEl) { 
                 targetEl.classList.remove('hidden'); 
-                if(targetId === 'view-timer' || targetId === 'view-meds-menu' || targetId === 'view-airway' || targetId === 'view-airway-doc' || targetId === 'view-zugang' || targetId === 'view-rosc-end' || targetId === 'view-abbruch-reason' || targetId === 'view-cpr-resume') {
-                    targetEl.classList.add('flex', 'flex-col'); 
-                } else {
-                    targetEl.classList.add('flex'); 
-                }
+                // BUGFIX: Wir erzwingen jetzt bei ALLEN runden Menüs ein vertikales Grid (flex-col).
+                // Dadurch verschwinden die Joule-Buttons nie wieder im unsichtbaren Rand!
+                targetEl.classList.add('flex', 'flex-col'); 
             }
             
             const progCircle = document.getElementById('progress-circle');
@@ -281,7 +279,6 @@ window.CPR.UI = (function() {
             this.updateSmartMedsButton();
         },
 
-        // 🌟 PERFEKTE LINIEN-GEOMETRIE MIT GRAUEM HINTERGRUND-RING 🌟
         updateCircle: function(canvasId, pct, color) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
@@ -297,19 +294,16 @@ window.CPR.UI = (function() {
 
             ctx.clearRect(0, 0, w, h);
             
-            // GRAUER TRACK (Zeichnet den Kreis-Hintergrund)
             ctx.beginPath();
             ctx.arc(center, center, r, 0, 2 * Math.PI);
-            ctx.strokeStyle = '#f1f5f9'; // Tailwind slate-100
+            ctx.strokeStyle = '#f1f5f9';
             ctx.lineWidth = lineW;
             ctx.stroke();
             
-            // FARBIGER FORTSCHRITT
             if (pct > 0) {
                 ctx.beginPath();
-                // -0.5 * Math.PI verschiebt den Startpunkt exakt auf 12 Uhr!
                 ctx.arc(center, center, r, -0.5 * Math.PI, (2 * Math.PI * pct) - 0.5 * Math.PI);
-                ctx.strokeStyle = color || '#06b6d4'; // Standard Cyan passend zum Screenshot!
+                ctx.strokeStyle = color || '#06b6d4'; 
                 ctx.lineWidth = lineW;
                 ctx.lineCap = 'round';
                 ctx.stroke();
