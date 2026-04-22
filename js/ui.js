@@ -238,7 +238,9 @@ window.CPR.UI = (function() {
             const adrText = document.getElementById('adr-text-2');
             if (adrBtn && adrText) {
                 if (isPedi && kg) {
-                    const dose = (kg * 0.01).toFixed(2) + ' mg';
+                    // NEU: Berechnung in Mikrogramm für Kinder! (10 µg pro kg)
+                    const doseUg = Math.round(kg * 10); 
+                    const dose = doseUg + ' µg';
                     adrBtn.dataset.dose = dose;
                     adrText.innerText = dose;
                 } else {
