@@ -27,7 +27,6 @@ window.CPR.UI = (function() {
             const targetEl = document.getElementById(targetId);
             if (targetEl) { 
                 targetEl.classList.remove('hidden'); 
-                
                 if(targetId === 'view-timer' || targetId === 'view-meds-menu' || targetId === 'view-airway' || targetId === 'view-airway-doc' || targetId === 'view-zugang' || targetId === 'view-rosc-end' || targetId === 'view-abbruch-reason' || targetId === 'view-cpr-resume') {
                     targetEl.classList.add('flex', 'flex-col'); 
                 } else {
@@ -40,7 +39,6 @@ window.CPR.UI = (function() {
                 if (targetId === 'view-timer') progCircle.classList.remove('opacity-0'); 
                 else progCircle.classList.add('opacity-0'); 
             }
-
             const disclaimer = document.getElementById('medical-disclaimer');
             if (disclaimer) { 
                 if (targetId === 'view-ob-1') disclaimer.classList.remove('hidden'); 
@@ -79,41 +77,31 @@ window.CPR.UI = (function() {
             if (size === 'small') {
                 mainBtn.style.width = '260px';
                 mainBtn.style.height = '260px';
-                
                 if (wrapper) {
                     wrapper.classList.remove('mb-0', 'mt-4');
                     wrapper.classList.add('mb-[140px]', 'mt-10');
                 }
-
                 if (btnAirway) btnAirway.classList.remove('opacity-0', 'pointer-events-none');
                 if (btnCpr) btnCpr.classList.remove('opacity-0', 'pointer-events-none');
-
                 if(sats) {
                     sats.classList.remove('hidden');
                     setTimeout(function() {
                         const btns = sats.querySelectorAll('.satellite-btn');
-                        btns.forEach(function(b) {
-                            b.classList.remove('opacity-0', 'pointer-events-none');
-                        });
+                        btns.forEach(function(b) { b.classList.remove('opacity-0', 'pointer-events-none'); });
                     }, 50);
                 }
             } else {
                 mainBtn.style.width = '330px';
                 mainBtn.style.height = '330px';
-                
                 if (wrapper) {
                     wrapper.classList.remove('mb-[140px]', 'mt-10');
                     wrapper.classList.add('mb-0', 'mt-4');
                 }
-
                 if (btnAirway) btnAirway.classList.add('opacity-0', 'pointer-events-none');
                 if (btnCpr) btnCpr.classList.add('opacity-0', 'pointer-events-none');
-
                 if(sats) {
                     const btns = sats.querySelectorAll('.satellite-btn');
-                    btns.forEach(function(b) {
-                        b.classList.add('opacity-0', 'pointer-events-none');
-                    });
+                    btns.forEach(function(b) { b.classList.add('opacity-0', 'pointer-events-none'); });
                     setTimeout(function() { sats.classList.add('hidden'); }, 300);
                 }
             }
@@ -121,7 +109,6 @@ window.CPR.UI = (function() {
 
         updateBpmUI: function() {
             const bpm = (window.CPR.AppState && window.CPR.AppState.bpm) ? window.CPR.AppState.bpm : 110;
-            
             document.querySelectorAll('.bpm-opt').forEach(function(b) {
                 if (parseInt(b.dataset.bpm) === bpm) {
                     b.className = 'bpm-opt flex-1 py-3 text-slate-800 font-black text-lg rounded-lg shadow-sm bg-white transition-all transform scale-105 border border-slate-100';
@@ -135,7 +122,6 @@ window.CPR.UI = (function() {
             const badge = document.getElementById('btn-pediatric-edit');
             const text = document.getElementById('pediatric-weight-display');
             if (!badge || !text) return;
-
             if (window.CPR.AppState && window.CPR.AppState.isPediatric) {
                 badge.classList.remove('hidden');
                 text.innerText = window.CPR.AppState.patientWeight ? window.CPR.AppState.patientWeight + ' kg' : 'Unbekannt';
@@ -150,7 +136,6 @@ window.CPR.UI = (function() {
             const lSync = document.getElementById('mode-label-sync');
             const lKont = document.getElementById('mode-label-kont');
             if (!thumb || !lSync || !lKont) return;
-
             const isKont = window.CPR.AppState.cprMode === 'continuous';
             if (isKont) {
                 thumb.style.transform = 'translateX(43px)';
@@ -167,12 +152,9 @@ window.CPR.UI = (function() {
         updateAdrenalinBadge: function() {
             const badge = document.getElementById('adr-count-badge');
             if (!badge) return;
-            
             const count = window.CPR.AppState ? (window.CPR.AppState.adrCount || 0) : 0;
-            
             if (count > 0) {
-                badge.style.display = 'flex';
-                badge.innerText = count; 
+                badge.style.display = 'flex'; badge.innerText = count; 
             } else {
                 badge.style.display = 'none';
             }
@@ -189,42 +171,19 @@ window.CPR.UI = (function() {
             const btn = document.getElementById('btn-meds-menu');
             const state = window.CPR.AppState;
             if (!btn || !state) return;
-
             const count = state.amioCount || 0;
 
             if (state.isShockable && count < 2) {
                 let doseText = count === 0 ? "300 mg" : "150 mg";
-                if (state.isPediatric && state.patientWeight) {
-                    doseText = Math.round(state.patientWeight * 5) + " mg";
-                }
-
-                btn.innerHTML = `
-                    <div class="flex flex-col items-center justify-center w-full h-full pointer-events-none relative z-10">
-                        <i class="fa-solid fa-syringe text-[24px] mb-1 text-purple-500"></i>
-                        <div class="flex flex-col items-center leading-none mt-0.5 w-full px-1">
-                            <span class="text-[10px] font-bold text-purple-600 uppercase tracking-tighter">Amio.</span>
-                            <span class="text-[11px] font-black text-purple-700 uppercase tracking-tight mt-0.5">${doseText}</span>
-                        </div>
-                    </div>
-                `;
+                if (state.isPediatric && state.patientWeight) doseText = Math.round(state.patientWeight * 5) + " mg";
+                btn.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full pointer-events-none relative z-10"><i class="fa-solid fa-syringe text-[24px] mb-1 text-purple-500"></i><div class="flex flex-col items-center leading-none mt-0.5 w-full px-1"><span class="text-[10px] font-bold text-purple-600 uppercase tracking-tighter">Amio.</span><span class="text-[11px] font-black text-purple-700 uppercase tracking-tight mt-0.5">${doseText}</span></div></div>`;
                 btn.classList.remove('bg-white', 'border-purple-100', 'text-slate-500');
                 btn.classList.add('bg-purple-50', 'border-purple-300', 'text-purple-600');
-                
-                btn.dataset.smartMode = "amio";
-                btn.dataset.amioDose = doseText;
+                btn.dataset.smartMode = "amio"; btn.dataset.amioDose = doseText;
             } else {
-                btn.innerHTML = `
-                    <div class="flex flex-col items-center justify-center w-full h-full pointer-events-none relative z-10">
-                        <i class="fa-solid fa-capsules text-[24px] mb-1 text-slate-400"></i>
-                        <div class="flex flex-col items-center leading-none mt-0.5 w-full px-1">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Meds</span>
-                            <span class="text-[11px] font-black text-purple-700 uppercase tracking-tight mt-0.5">Menü</span>
-                        </div>
-                    </div>
-                `;
+                btn.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full pointer-events-none relative z-10"><i class="fa-solid fa-capsules text-[24px] mb-1 text-slate-400"></i><div class="flex flex-col items-center leading-none mt-0.5 w-full px-1"><span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Meds</span><span class="text-[11px] font-black text-purple-700 uppercase tracking-tight mt-0.5">Menü</span></div></div>`;
                 btn.classList.remove('bg-purple-50', 'border-purple-300', 'text-purple-600');
                 btn.classList.add('bg-white', 'border-purple-100', 'text-slate-500');
-                
                 btn.dataset.smartMode = "menu";
             }
         },
@@ -238,12 +197,10 @@ window.CPR.UI = (function() {
             if (adrBtn && adrText) {
                 if (isPedi && kg) {
                     const doseUg = Math.round(kg * 10); 
-                    const dose = doseUg + ' µg';
-                    adrBtn.dataset.dose = dose;
-                    adrText.innerText = dose;
+                    adrBtn.dataset.dose = doseUg + ' µg';
+                    adrText.innerText = doseUg + ' µg';
                 } else {
-                    adrBtn.dataset.dose = '1 mg';
-                    adrText.innerText = '1 mg';
+                    adrBtn.dataset.dose = '1 mg'; adrText.innerText = '1 mg';
                 }
             }
 
@@ -324,7 +281,7 @@ window.CPR.UI = (function() {
             this.updateSmartMedsButton();
         },
 
-        // 🌟 PERFEKTE LINIEN-GEOMETRIE (-2 Pixel Update) 🌟
+        // 🌟 PERFEKTE LINIEN-GEOMETRIE MIT GRAUEM HINTERGRUND-RING 🌟
         updateCircle: function(canvasId, pct, color) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
@@ -334,19 +291,25 @@ window.CPR.UI = (function() {
             const h = canvas.height;
             const center = w / 2;
 
-            // Haupt-Ring ist 8px, Satellit ist 4px.
             const isMain = (canvasId === 'progress-circle');
             const lineW = isMain ? 8 : 4; 
-            
-            // Berechnung: Damit der Strich genau bündig mit der runden Kante abschließt
             const r = center - (lineW / 2); 
 
             ctx.clearRect(0, 0, w, h);
             
+            // GRAUER TRACK (Zeichnet den Kreis-Hintergrund)
+            ctx.beginPath();
+            ctx.arc(center, center, r, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#f1f5f9'; // Tailwind slate-100
+            ctx.lineWidth = lineW;
+            ctx.stroke();
+            
+            // FARBIGER FORTSCHRITT
             if (pct > 0) {
                 ctx.beginPath();
-                ctx.arc(center, center, r, 0, 2 * Math.PI * pct);
-                ctx.strokeStyle = color || '#E3000F';
+                // -0.5 * Math.PI verschiebt den Startpunkt exakt auf 12 Uhr!
+                ctx.arc(center, center, r, -0.5 * Math.PI, (2 * Math.PI * pct) - 0.5 * Math.PI);
+                ctx.strokeStyle = color || '#06b6d4'; // Standard Cyan passend zum Screenshot!
                 ctx.lineWidth = lineW;
                 ctx.lineCap = 'round';
                 ctx.stroke();
