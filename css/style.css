@@ -121,7 +121,6 @@ body.debug-mode #orbit-wrapper > div::before { content: ''; position: absolute; 
     background-color: #ffffff !important;
     border-radius: 50% !important;
     overflow: hidden !important; 
-    border: 8px solid #f8fafc !important; 
     box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important;
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
 }
