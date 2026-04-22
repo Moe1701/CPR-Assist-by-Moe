@@ -2,13 +2,12 @@ window.CPR = window.CPR || {};
 
 /**
  * CPR Assist - Main CPR Timer (Medical Grade)
- * - Fängt Zeitsprünge im Standby perfekt ab.
+ * - Robuster 1-Sekunden-Takt (setInterval) statt fehleranfälliger Date.now() Differenz.
  * - Unterstützt beide HTML-Layouts (Static Index & remodelViewTimer).
  * - "NaN"-Bug bei Initialisierung restlos behoben.
  */
 window.CPR.CprTimer = (function() {
     let interval = null;
-    let lastTick = 0;
 
     function getCycleLength() {
         return (window.CPR.CONFIG && window.CPR.CONFIG.CPR_CYCLE_SECONDS) ? window.CPR.CONFIG.CPR_CYCLE_SECONDS : 120;
@@ -163,38 +162,27 @@ window.CPR.CprTimer = (function() {
     function tick() {
         try {
             const state = window.CPR.AppState;
-            if (!state || state.isRunning === false) {
-                lastTick = Date.now();
-                return;
-            }
+            if (!state || state.isRunning === false) return;
 
-            const now = Date.now();
-            const deltaMs = now - lastTick;
+            // 🌟 Echter 1-Sekunden Takt
+            const oldSec = state.cprSeconds || 0;
+            state.cprSeconds = oldSec + 1; 
+            
+            const cycleLen = getCycleLength();
 
-            if (deltaMs >= 1000) {
-                const deltaSec = Math.floor(deltaMs / 1000);
-                
-                // 🌟 BUGFIX: Verhindert, dass undefined + deltaSec zu NaN führt!
-                const oldSec = state.cprSeconds || 0;
-                state.cprSeconds = oldSec + deltaSec; 
-                
-                const cycleLen = getCycleLength();
-
-                if (window.CPR.Audio) {
-                    if (oldSec < (cycleLen - 15) && state.cprSeconds >= (cycleLen - 15)) {
-                        if (window.CPR.Audio.playAlert) window.CPR.Audio.playAlert();
-                        if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([200, 100, 200]);
-                    }
-                    if (oldSec < cycleLen && state.cprSeconds >= cycleLen) {
-                        if (window.CPR.Audio.playAlertLong) window.CPR.Audio.playAlertLong();
-                        else if (window.CPR.Audio.playAlert) window.CPR.Audio.playAlert();
-                        if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([400, 200, 400, 200, 400]);
-                    }
+            if (window.CPR.Audio) {
+                if (oldSec < (cycleLen - 15) && state.cprSeconds >= (cycleLen - 15)) {
+                    if (window.CPR.Audio.playAlert) window.CPR.Audio.playAlert();
+                    if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([200, 100, 200]);
                 }
-
-                updateUI();
-                lastTick += deltaSec * 1000;
+                if (oldSec < cycleLen && state.cprSeconds >= cycleLen) {
+                    if (window.CPR.Audio.playAlertLong) window.CPR.Audio.playAlertLong();
+                    else if (window.CPR.Audio.playAlert) window.CPR.Audio.playAlert();
+                    if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([400, 200, 400, 200, 400]);
+                }
             }
+
+            updateUI();
         } catch(e) {
             console.error("[CPR] Fehler im Timer Tick:", e);
         }
@@ -205,11 +193,10 @@ window.CPR.CprTimer = (function() {
             if (!resume) {
                 if (window.CPR.AppState) window.CPR.AppState.cprSeconds = 0;
             }
-            lastTick = Date.now();
             updateUI();
 
             if (interval) clearInterval(interval);
-            interval = setInterval(tick, 200); 
+            interval = setInterval(tick, 1000); 
         },
         pause: function() {
             if (interval) {
