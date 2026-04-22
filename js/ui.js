@@ -98,8 +98,8 @@ window.CPR.UI = (function() {
                     }, 50);
                 }
             } else {
-                mainBtn.style.width = '350px';
-                mainBtn.style.height = '350px';
+                mainBtn.style.width = '330px';
+                mainBtn.style.height = '330px';
                 
                 if (wrapper) {
                     wrapper.classList.remove('mb-[140px]', 'mt-10');
