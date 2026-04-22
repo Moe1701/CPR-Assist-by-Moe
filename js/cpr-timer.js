@@ -1,246 +1,143 @@
 window.CPR = window.CPR || {};
 
-window.CPR.UI = (function() {
-    return {
-        switchView: function(viewId) {
-            if (window.CPR.Globals) window.CPR.Globals.lastViewSwitch = Date.now();
-            
-            const allViews = [
-                'view-ob-1', 'view-ob-2', 'view-ob-3', 'view-timer', 'view-decision', 
-                'view-cpr-resume', 'view-joule', 'view-airway', 'view-airway-doc', 
-                'view-meds-menu', 'view-zugang', 'view-rosc-end', 'view-abbruch-reason', 
-                'view-initial-breaths'
-            ];
-            
-            allViews.forEach(function(id) {
-                const el = document.getElementById(id);
-                if (el) { 
-                    el.style.display = ''; 
-                    el.classList.add('hidden'); 
-                    el.classList.remove('flex', 'flex-col'); 
-                }
-            });
+/**
+ * CPR Assist - Main CPR Timer (Medical Grade)
+ * Härtetest-Edition: Schreibt zerstörungsfrei in den DOM. 
+ * Klicks auf den Hauptbutton und Menüs bleiben zu 100% erhalten!
+ */
+window.CPR.CprTimer = (function() {
+    let interval = null;
+    let lastTick = 0;
 
-            let targetId = viewId;
-            if (targetId && targetId.indexOf('view-') !== 0) targetId = 'view-' + targetId;
-            
-            const targetEl = document.getElementById(targetId);
-            if (targetEl) { 
-                targetEl.classList.remove('hidden'); 
-                if(targetId === 'view-timer' || targetId === 'view-meds-menu' || targetId === 'view-airway' || targetId === 'view-airway-doc' || targetId === 'view-zugang' || targetId === 'view-rosc-end' || targetId === 'view-abbruch-reason' || targetId === 'view-cpr-resume') {
-                    targetEl.classList.add('flex', 'flex-col'); 
-                } else {
-                    targetEl.classList.add('flex'); 
-                }
-            }
-            
-            const progCircle = document.getElementById('progress-circle');
-            if (progCircle) { 
-                if (targetId === 'view-timer') progCircle.classList.remove('opacity-0'); 
-                else progCircle.classList.add('opacity-0'); 
-            }
-            const disclaimer = document.getElementById('medical-disclaimer');
-            if (disclaimer) { 
-                if (targetId === 'view-ob-1') disclaimer.classList.remove('hidden'); 
-                else disclaimer.classList.add('hidden'); 
-            }
-        },
+    function getCycleLength() {
+        return (window.CPR.CONFIG && window.CPR.CONFIG.CPR_CYCLE_SECONDS) ? window.CPR.CONFIG.CPR_CYCLE_SECONDS : 120;
+    }
 
-        navigate: function(state, view, size) {
-            if (!window.CPR.AppState) return;
-            if (state) {
-                window.CPR.AppState.previousState = window.CPR.AppState.state;
-                window.CPR.AppState.state = state;
-            }
-            if (view) this.switchView(view);
-            if (size) this.setCenterSize(size);
-            
-            const pPanel = document.getElementById('protocol-panel');
-            if (pPanel) pPanel.classList.add('translate-y-full');
-            const hPanel = document.getElementById('hits-panel');
-            if (hPanel) hPanel.classList.add('translate-y-full');
-        },
-
-        setCenterSize: function(size) {
-            this.updateOrbitGeometry(size);
-        },
-
-        updateOrbitGeometry: function(size) {
-            const mainBtn = document.getElementById('main-btn-area');
-            const sats = document.getElementById('satellites');
-            const wrapper = document.getElementById('orbit-wrapper');
-            const btnAirway = document.getElementById('btn-airway');
-            const btnCpr = document.getElementById('btn-cpr');
-            
-            if (!mainBtn) return;
-
-            if (size === 'small') {
-                mainBtn.style.width = '260px';
-                mainBtn.style.height = '260px';
-                if (wrapper) {
-                    wrapper.classList.remove('mb-0', 'mt-4');
-                    wrapper.classList.add('mb-[140px]', 'mt-10');
-                }
-                if (btnAirway) btnAirway.classList.remove('opacity-0', 'pointer-events-none');
-                if (btnCpr) btnCpr.classList.remove('opacity-0', 'pointer-events-none');
-                if(sats) {
-                    sats.classList.remove('hidden');
-                    setTimeout(function() {
-                        const btns = sats.querySelectorAll('.satellite-btn');
-                        btns.forEach(function(b) { b.classList.remove('opacity-0', 'pointer-events-none'); });
-                    }, 50);
-                }
-            } else {
-                mainBtn.style.width = '330px';
-                mainBtn.style.height = '330px';
-                if (wrapper) {
-                    wrapper.classList.remove('mb-[140px]', 'mt-10');
-                    wrapper.classList.add('mb-0', 'mt-4');
-                }
-                if (btnAirway) btnAirway.classList.add('opacity-0', 'pointer-events-none');
-                if (btnCpr) btnCpr.classList.add('opacity-0', 'pointer-events-none');
-                if(sats) {
-                    const btns = sats.querySelectorAll('.satellite-btn');
-                    btns.forEach(function(b) { b.classList.add('opacity-0', 'pointer-events-none'); });
-                    setTimeout(function() { sats.classList.add('hidden'); }, 300);
-                }
-            }
-        },
-
-        updateBpmUI: function() {
-            const bpm = (window.CPR.AppState && window.CPR.AppState.bpm) ? window.CPR.AppState.bpm : 110;
-            document.querySelectorAll('.bpm-opt').forEach(function(b) {
-                if (parseInt(b.dataset.bpm) === bpm) {
-                    b.className = 'bpm-opt flex-1 py-3 text-slate-800 font-black text-lg rounded-lg shadow-sm bg-white transition-all transform scale-105 border border-slate-100';
-                } else {
-                    b.className = 'bpm-opt flex-1 py-3 text-slate-400 font-black text-lg rounded-lg transition-all border border-transparent bg-transparent';
-                }
-            });
-        },
-
-        updatePediatricUI: function() {
-            const badge = document.getElementById('btn-pediatric-edit');
-            const text = document.getElementById('pediatric-weight-display');
-            if (!badge || !text) return;
-            if (window.CPR.AppState && window.CPR.AppState.isPediatric) {
-                badge.classList.remove('hidden');
-                text.innerText = window.CPR.AppState.patientWeight ? window.CPR.AppState.patientWeight + ' kg' : 'Unbekannt';
-            } else {
-                badge.classList.add('hidden');
-            }
-        },
-
-        updateCprModeUI: function() {
-            if (!window.CPR.AppState) return;
-            const thumb = document.getElementById('mode-slider-thumb');
-            const lSync = document.getElementById('mode-label-sync');
-            const lKont = document.getElementById('mode-label-kont');
-            if (!thumb || !lSync || !lKont) return;
-            const isKont = window.CPR.AppState.cprMode === 'continuous';
-            if (isKont) {
-                thumb.style.transform = 'translateX(43px)';
-                lSync.className = 'flex-1 text-center text-[10px] font-black z-10 transition-colors duration-300 text-amber-400';
-                lKont.className = 'flex-1 text-center text-[10px] font-black z-10 transition-colors duration-300 text-amber-700';
-            } else {
-                thumb.style.transform = 'translateX(0px)';
-                lSync.className = 'flex-1 text-center text-[10px] font-black z-10 transition-colors duration-300 text-amber-700';
-                lKont.className = 'flex-1 text-center text-[10px] font-black z-10 transition-colors duration-300 text-amber-400';
-                lSync.innerText = window.CPR.AppState.isPediatric ? '15:2' : '30:2';
-            }
-        },
-
-        updateAdrenalinBadge: function() {
-            const badge = document.getElementById('adr-count-badge');
-            if (!badge) return;
-            const count = window.CPR.AppState ? (window.CPR.AppState.adrCount || 0) : 0;
-            if (count > 0) {
-                badge.style.display = 'flex'; badge.innerText = count; 
-            } else {
-                badge.style.display = 'none';
-            }
-        },
-
-        hideVentilationUI: function() {
-            const badge = document.getElementById('airway-countdown-badge');
-            if (badge) badge.classList.add('hidden');
-            const glowBg = document.getElementById('aw-glow-bg');
-            if (glowBg) glowBg.style.opacity = '0';
-        },
-
-        updateSmartMedsButton: function() {
-            const btn = document.getElementById('btn-meds-menu');
+    function updateUI() {
+        try {
             const state = window.CPR.AppState;
-            if (!btn || !state) return;
-            const count = state.amioCount || 0;
+            if (!state) return;
 
-            if (state.isShockable && count < 2) {
-                let doseText = count === 0 ? "300 mg" : "150 mg";
-                if (state.isPediatric && state.patientWeight) doseText = Math.round(state.patientWeight * 5) + " mg";
-                btn.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full pointer-events-none relative z-10"><i class="fa-solid fa-syringe text-[24px] mb-1 text-purple-500"></i><div class="flex flex-col items-center leading-none mt-0.5 w-full px-1"><span class="text-[10px] font-bold text-purple-600 uppercase tracking-tighter">Amio.</span><span class="text-[11px] font-black text-purple-700 uppercase tracking-tight mt-0.5">${doseText}</span></div></div>`;
-                btn.classList.remove('bg-white', 'border-purple-100', 'text-slate-500');
-                btn.classList.add('bg-purple-50', 'border-purple-300', 'text-purple-600');
-                btn.dataset.smartMode = "amio"; btn.dataset.amioDose = doseText;
-            } else {
-                btn.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full pointer-events-none relative z-10"><i class="fa-solid fa-capsules text-[24px] mb-1 text-slate-400"></i><div class="flex flex-col items-center leading-none mt-0.5 w-full px-1"><span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Meds</span><span class="text-[11px] font-black text-purple-700 uppercase tracking-tight mt-0.5">Menü</span></div></div>`;
-                btn.classList.remove('bg-purple-50', 'border-purple-300', 'text-purple-600');
-                btn.classList.add('bg-white', 'border-purple-100', 'text-slate-500');
-                btn.dataset.smartMode = "menu";
-            }
-        },
+            const cycleLen = getCycleLength();
+            const sec = state.cprSeconds || 0;
+            const remaining = Math.max(0, cycleLen - sec); 
 
-        recalcMeds: function() {
-            const isPedi = window.CPR.AppState && window.CPR.AppState.isPediatric;
-            const kg = window.CPR.AppState ? window.CPR.AppState.patientWeight : 0;
+            const elTimer = document.getElementById('cycle-timer');
+            // GANZ WICHTIG: Wir holen uns nur das exakte innerste Span-Element!
+            const topTextSpan = document.querySelector('.vt-top-text span');
+            const mainBtnArea = document.getElementById('main-btn-area');
 
-            const adrBtn = document.getElementById('btn-adrenalin');
-            const adrText = document.getElementById('adr-text-2');
-            if (adrBtn && adrText) {
-                if (isPedi && kg) {
-                    const doseUg = Math.round(kg * 10); 
-                    adrBtn.dataset.dose = doseUg + ' µg';
-                    adrText.innerText = doseUg + ' µg';
+            if (elTimer) {
+                const m = Math.floor(remaining / 60).toString().padStart(2, '0');
+                const s = (remaining % 60).toString().padStart(2, '0');
+                elTimer.innerText = m + ':' + s;
+
+                if (sec >= cycleLen) {
+                    // OVERTIME
+                    elTimer.classList.add('text-[#E3000F]', 'animate-pulse');
+                    elTimer.classList.remove('text-slate-800', 'text-amber-500');
+                    
+                    if (topTextSpan) {
+                        topTextSpan.innerText = 'ANALYSE FÄLLIG';
+                        topTextSpan.className = 'text-[#E3000F] font-black animate-pulse text-[12px]';
+                    }
+                    if (mainBtnArea) mainBtnArea.classList.add('shadow-[0_0_30px_rgba(227,0,15,0.25)]');
                 } else {
-                    adrBtn.dataset.dose = '1 mg'; adrText.innerText = '1 mg';
+                    // NORMAL (Timer läuft noch)
+                    if (mainBtnArea) mainBtnArea.classList.remove('shadow-[0_0_30px_rgba(227,0,15,0.25)]');
+                    
+                    if (topTextSpan) {
+                        topTextSpan.innerText = 'BEI ANALYSE DRÜCKEN';
+                        topTextSpan.className = 'text-slate-500 font-bold text-[11px] uppercase tracking-widest';
+                    }
+
+                    if (remaining <= 15) {
+                        elTimer.classList.add('text-amber-500');
+                        elTimer.classList.remove('text-slate-800', 'text-[#E3000F]', 'animate-pulse');
+                    } else {
+                        elTimer.classList.add('text-slate-800');
+                        elTimer.classList.remove('text-amber-500', 'text-[#E3000F]', 'animate-pulse');
+                    }
                 }
             }
 
-            // ... restliche Medis Recalc ...
-            this.updateSmartMedsButton();
-        },
-
-        // 🌟 PERFEKTE LINIEN-GEOMETRIE MIT GRAUEM HINTERGRUND-RING 🌟
-        updateCircle: function(canvasId, pct, color) {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) return;
+            // Kreis (Canvas) zeichnen
+            const pct = Math.min(sec / cycleLen, 1.0); 
+            let color = '#06b6d4'; // Cyan
             
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width;
-            const h = canvas.height;
-            const center = w / 2;
+            if (sec >= cycleLen) color = '#E3000F'; // Rot
+            else if (remaining <= 15) color = '#f59e0b'; // Bernstein
 
-            const isMain = (canvasId === 'progress-circle');
-            const lineW = isMain ? 8 : 4; 
-            const r = center - (lineW / 2); 
-
-            ctx.clearRect(0, 0, w, h);
-            
-            // GRAUER TRACK (Zeichnet den Kreis-Hintergrund)
-            ctx.beginPath();
-            ctx.arc(center, center, r, 0, 2 * Math.PI);
-            ctx.strokeStyle = '#f1f5f9'; // Tailwind slate-100
-            ctx.lineWidth = lineW;
-            ctx.stroke();
-            
-            // FARBIGER FORTSCHRITT
-            if (pct > 0) {
-                ctx.beginPath();
-                // -0.5 * Math.PI verschiebt den Startpunkt exakt auf 12 Uhr!
-                ctx.arc(center, center, r, -0.5 * Math.PI, (2 * Math.PI * pct) - 0.5 * Math.PI);
-                ctx.strokeStyle = color || '#06b6d4'; // Standard Cyan passend zum Screenshot!
-                ctx.lineWidth = lineW;
-                ctx.lineCap = 'round';
-                ctx.stroke();
+            if (window.CPR.UI && typeof window.CPR.UI.updateCircle === 'function') {
+                window.CPR.UI.updateCircle('progress-circle', pct, color);
             }
+
+        } catch (e) {
+            console.error("[CPR] Fehler im UI Update des CPR Timers:", e);
         }
+    }
+
+    function tick() {
+        try {
+            const state = window.CPR.AppState;
+            if (!state || state.isPaused) {
+                lastTick = Date.now();
+                return;
+            }
+
+            const now = Date.now();
+            const deltaMs = now - lastTick;
+
+            if (deltaMs >= 1000) {
+                const deltaSec = Math.floor(deltaMs / 1000);
+                const oldSec = state.cprSeconds;
+                state.cprSeconds += deltaSec;
+                
+                const cycleLen = getCycleLength();
+
+                if (window.CPR.Audio) {
+                    if (oldSec < (cycleLen - 15) && state.cprSeconds >= (cycleLen - 15)) {
+                        if (window.CPR.Audio.playAlert) window.CPR.Audio.playAlert();
+                        if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([200, 100, 200]);
+                    }
+                    if (oldSec < cycleLen && state.cprSeconds >= cycleLen) {
+                        if (window.CPR.Audio.playAlertLong) window.CPR.Audio.playAlertLong();
+                        else if (window.CPR.Audio.playAlert) window.CPR.Audio.playAlert();
+                        if (window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate([400, 200, 400, 200, 400]);
+                    }
+                }
+
+                updateUI();
+                lastTick += deltaSec * 1000;
+            }
+        } catch(e) {
+            console.error("[CPR] Fehler im Timer Tick:", e);
+        }
+    }
+
+    return {
+        start: function(resume) {
+            if (!resume) {
+                if (window.CPR.AppState) window.CPR.AppState.cprSeconds = 0;
+            }
+            lastTick = Date.now();
+            updateUI();
+
+            if (interval) clearInterval(interval);
+            interval = setInterval(tick, 200); 
+        },
+        pause: function() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+        },
+        stop: function() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+        },
+        updateUI: updateUI
     };
 })();
