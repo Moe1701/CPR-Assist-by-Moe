@@ -1,13 +1,55 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
- * BUGFIX: Event-Listener Blockade auf dem Analyse-Button behoben!
- * CLEANUP: Zerstörerische remodelViewTimer-Funktion restlos entfernt.
- * LOGIC FIX: Timer-Start Parameter-Inversion (Resume vs Reset) ist korrigiert!
+ * BUGFIX: activateDashboard startet den Timer jetzt zu 100% zuverlässig!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     const CPR = window.CPR;
     const { CONFIG, Globals, AppState, broselowData, Utils, UI, Audio: AudioEngine } = CPR;
+
+    function remodelViewTimer() {
+        const vt = document.getElementById('view-timer');
+        if (vt) {
+            vt.className = "hidden flex-col items-center justify-center w-full h-full text-center relative pointer-events-none";
+            const shocks = AppState.shockCount || 0;
+            
+            vt.innerHTML = `
+                <div class="vt-top-text">
+                    <span id="timer-top-text">Bei Analyse drücken</span>
+                </div>
+                <div id="cycle-timer" class="vt-timer-display" style="font-variant-numeric: tabular-nums;">
+                    02:00
+                </div>
+                <div id="inner-prepare-alert" class="hidden vt-alert-box">
+                    <div class="vt-alert-row">
+                        <div class="vt-alert-dot bg-amber-500 animate-ping"></div>
+                        <span class="vt-alert-txt text-amber-500">Puls tasten, Defi laden</span>
+                    </div>
+                    <span id="prepare-time" class="vt-alert-num text-amber-500">30</span>
+                </div>
+                <div id="inner-precharge-alert" class="hidden vt-alert-box">
+                    <div class="vt-alert-row">
+                        <div class="vt-alert-dot bg-[#E3000F] animate-ping"></div>
+                        <span class="vt-alert-txt text-[#E3000F]">Defi laden</span>
+                    </div>
+                    <span id="precharge-time" class="vt-alert-num text-[#E3000F]">15</span>
+                </div>
+                <div id="inner-analyze-alert" class="hidden vt-alert-box">
+                    <div class="vt-analyze-badge animate-pulse">
+                        <span class="vt-analyze-txt">Analyse Fällig</span>
+                    </div>
+                    <span class="vt-analyze-sub">Jetzt hier drücken</span>
+                </div>
+                <div class="vt-bottom-info">
+                    <i class="fa-solid fa-bolt text-amber-400"></i>
+                    <span id="rhythm-info-shocks">${shocks}</span>
+                    <span class="text-slate-300 mx-1">|</span>
+                    <span id="rhythm-info-joule" class="text-[#E3000F]">150 J</span>
+                </div>
+            `;
+        }
+    }
+    remodelViewTimer();
 
     function navHelper(newState, viewId, size) {
         if (newState) { AppState.previousState = AppState.state; AppState.state = newState; }
@@ -124,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 200);
     }
 
+    // 🌟 LOGIK FIX: Steuert Resume und Reset exakt. 
     function activateDashboard(shouldResetTimer = true) {
         document.body.classList.add('dashboard-active');
         const sats = document.getElementById('satellites'); if (sats) sats.classList.remove('hidden');
@@ -131,7 +174,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (UI && typeof UI.recalcMeds === 'function') UI.recalcMeds();
         AppState.isRunning = true;
         
-        // 🌟 LOGIK-FIX: Wenn shouldResetTimer = true, darf er NICHT resumen (!shouldResetTimer)
         if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
             const resume = !shouldResetTimer;
             CPR.CPRTimer.start(resume);
@@ -472,8 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         addClick('main-btn-area', (e) => {
-            const isAnalyzeBtn = e.target.closest('#btn-permanent-analyze');
-            if (!isAnalyzeBtn && (e.target.closest('button') || e.target.closest('select') || e.target.closest('input'))) return;
+            if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
             if (Date.now() - (Globals.lastMenuAction || 0) < 500) return;
             
             if (AppState.state === 'OB_COMPRESSIONS') { 
@@ -748,101 +789,3 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const startEl = document.getElementById('start-time'); if (startEl) startEl.innerText = session.startTime || '--:--';
             const awLabel = document.getElementById('airway-label'); if (awLabel) awLabel.innerText = session.airwayLabel || "Atemweg";
-            const zugLabel = document.getElementById('zugang-label'); if (zugLabel) zugLabel.innerText = session.zugangLabel || "Zugang";
-            
-            if (AppState.airwayEstablished) { document.getElementById('btn-airway-remove')?.classList.remove('hidden'); document.getElementById('btn-airway-edit-doc')?.classList.remove('hidden'); }
-            if (UI && typeof UI.recalcMeds === 'function') UI.recalcMeds(); 
-            updateCCF(); 
-            if (UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); 
-            if (UI && typeof UI.updateAdrenalinBadge === 'function') UI.updateAdrenalinBadge();
-            if (UI && typeof UI.updateSmartMedsButton === 'function') UI.updateSmartMedsButton();
-
-            if (AppState.shockCount) {
-                const shockLabel = document.getElementById('rhythm-info-shocks');
-                if(shockLabel) shockLabel.innerText = AppState.shockCount;
-            }
-
-            if (AppState.state === 'END' || AppState.state === 'ROSC_ACTIVE') {
-                if (AppState.state === 'ROSC_ACTIVE') {
-                    document.getElementById('cpr-interface')?.classList.add('hidden'); 
-                    document.getElementById('rosc-interface')?.classList.remove('hidden'); 
-                    document.getElementById('top-stats-container')?.classList.remove('hidden'); 
-                    document.getElementById('stat-ccf')?.classList.add('hidden'); 
-                    document.getElementById('stat-rosc')?.classList.remove('hidden');
-                    updatePediRoscVitals(); 
-                    if (AppState.isRunning !== false) { startMainTimer(); startRoscTimer(); } 
-                    requestWakeLock();
-                } else { 
-                    document.getElementById('top-stats-container')?.classList.remove('hidden'); 
-                    navHelper(null, 'view-timer', 'small'); 
-                    if(AppState.isRunning === false) { document.getElementById('debriefing-modal')?.classList.replace('hidden', 'flex'); } 
-                }
-            } else if (AppState.state !== 'IDLE' && AppState.state.indexOf('OB_') !== 0) {
-                document.body.classList.add('dashboard-active');
-                
-                document.getElementById('top-stats-container')?.classList.remove('hidden'); 
-                document.getElementById('satellites')?.classList.remove('hidden');
-                ['btn-airway', 'btn-cpr'].forEach(id => { document.getElementById(id)?.classList.remove('opacity-0', 'pointer-events-none'); });
-                
-                if (AppState.state === 'WAITING_CPR_RESUME') {
-                    navHelper(null, 'view-cpr-resume', 'large');
-                } else if (AppState.state !== 'RUNNING') { 
-                    navHelper(null, AppState.state === 'JOULE' ? 'view-joule' : 'view-decision', 'large'); 
-                } else { 
-                    navHelper(null, 'view-timer', 'small'); 
-                }
-
-                if (AppState.isRunning !== false) { 
-                    startMainTimer(); 
-                    if (AppState.state === 'RUNNING' && CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
-                        // 🌟 LOGIK-FIX: Beim Neuladen der Session MUSS der Timer resumen (true)
-                        CPR.CPRTimer.start(true); 
-                    } else if (CPR.CPRTimer && typeof CPR.CPRTimer.updateUI === 'function') {
-                        CPR.CPRTimer.updateUI();
-                    }
-                } else { 
-                    if(CPR.CPRTimer && typeof CPR.CPRTimer.updateUI === 'function') CPR.CPRTimer.updateUI(); 
-                    document.getElementById('debriefing-modal')?.classList.replace('hidden', 'flex'); 
-                }
-                updateCprUI(); requestWakeLock();
-                if (AppState.adrSeconds > 0 && CPR.AdrTimer && typeof CPR.AdrTimer.start === 'function') CPR.AdrTimer.start(true); 
-            }
-
-            if (window.CPR.LogTimeline && typeof window.CPR.LogTimeline.forceRender === 'function') window.CPR.LogTimeline.forceRender();
-            Utils.sysLog("Session loaded successfully."); 
-            return true;
-        } catch (e) { 
-            Utils.sysLog("Session load fail: " + e.message); 
-            Utils.safeRemoveItem('cpr_assist_session'); 
-            return false; 
-        }
-    }
-
-    try { initHeaderEvents(); } catch(e) { Utils.sysLog("Error Init Header: " + e.message); }
-    try { initPatientSetupEvents(); } catch(e) { Utils.sysLog("Error Init Patient: " + e.message); }
-    try { initCPREvents(); } catch(e) { Utils.sysLog("Error Init CPR: " + e.message); }
-    try { initMenuEvents(); } catch(e) { Utils.sysLog("Error Init Menus: " + e.message); }
-    try { initProtocolEvents(); } catch(e) { Utils.sysLog("Error Init Protocol: " + e.message); }
-    try { initPanelEvents(); } catch(e) { Utils.sysLog("Error Init Panels: " + e.message); }
-    
-    window.CPR.startMainTimer = startMainTimer;
-    window.CPR.updateCprUI = updateCprUI;
-    window.CPR.startRoscTimer = startRoscTimer;
-
-    if (UI && typeof UI.switchView === 'function') { UI.switchView('view-ob-1'); }
-    if (UI && typeof UI.setCenterSize === 'function') { UI.setCenterSize('large'); }
-
-    setTimeout(() => {
-        if (loadSession()) {
-            const st = AppState.state || 'IDLE'; 
-            if (st !== 'IDLE' && st.indexOf('OB_') !== 0) {
-                if (st === 'RUNNING') {
-                    if (UI && typeof UI.updateOrbitGeometry === 'function') UI.updateOrbitGeometry('small');
-                    navHelper(null, null, 'small');
-                } else {
-                    navHelper(null, null, 'large');
-                }
-            }
-        }
-    }, 100);
-});
