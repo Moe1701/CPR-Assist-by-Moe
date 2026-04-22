@@ -111,25 +111,13 @@ body.debug-mode #orbit-wrapper > div::before { content: ''; position: absolute; 
     position: absolute !important; top: 0 !important; bottom: 0 !important; left: 0 !important; right: 0 !important; margin: 0 !important; padding: 0 !important;
 }
 
-/* 🌟 FIX: Startbildschirm ("Patient wählen") - Befreit aus dem Zwangskreis! */
-body:not(.dashboard-active) #main-btn-area {
-    width: 100% !important;
-    height: 100% !important;
-    background-color: transparent !important;
-    border: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    overflow: visible !important;
+#orbit-wrapper > div.relative {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transform: translateY(0) !important; 
 }
 
-body:not(.dashboard-active) #orbit-wrapper > div.relative {
-    width: 100% !important;
-    height: 100% !important;
-    transform: none !important;
-}
-
-/* 🌟 DASHBOARD MODUS: Hier wird der Master-Kreis definiert */
-body.dashboard-active #main-btn-area {
+/* 🌟 DER MASTER-KREIS (Immer als Kreis gerendert, auch im Onboarding) 🌟 */
+#main-btn-area {
     background-color: #ffffff !important;
     border-radius: 50% !important;
     overflow: hidden !important; 
@@ -137,25 +125,21 @@ body.dashboard-active #main-btn-area {
     box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important;
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease !important;
 }
-body.dashboard-active #main-btn-area:active {
+
+#main-btn-area:active {
     transform: scale(0.97) !important; box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important; filter: brightness(0.97) !important;
 }
 
-#orbit-wrapper > div.relative {
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    transform: translateY(0) !important; 
-}
-
-/* KREIS GROSS: Menüs (Decision, Joule etc.) sind offen (350px / 400px) */
-body.dashboard-active.center-menu-open #orbit-wrapper > div.relative, 
-body.dashboard-active.center-menu-open #main-btn-area {
-    width: 350px !important;
-    height: 350px !important;
+/* KREIS GROSS: Menüs (Decision, Joule etc.) sind offen (330px / 400px) */
+body.center-menu-open #orbit-wrapper > div.relative, 
+body.center-menu-open #main-btn-area {
+    width: 330px !important;
+    height: 330px !important;
     z-index: 60 !important; 
 }
 @media (min-width: 768px) {
-    body.dashboard-active.center-menu-open #orbit-wrapper > div.relative, 
-    body.dashboard-active.center-menu-open #main-btn-area { width: 400px !important; height: 400px !important; }
+    body.center-menu-open #orbit-wrapper > div.relative, 
+    body.center-menu-open #main-btn-area { width: 400px !important; height: 400px !important; }
 }
 
 /* KREIS KLEIN: CPR-Timer läuft (240px) */
@@ -193,34 +177,33 @@ body.dashboard-active.cpr-mode-small #orbit-wrapper > div.relative {
    8. MENÜ-CONTAINER (SAUBER! Zerschießt keine Tailwind-Grids mehr!)
    ========================================== */
 /* Zwingt die sichtbaren Container, den Kreis exakt auszufüllen */
-body.dashboard-active #view-decision:not(.hidden), 
-body.dashboard-active #view-joule:not(.hidden), 
-body.dashboard-active #view-cpr-resume:not(.hidden),
-body.dashboard-active #view-meds-menu:not(.hidden), 
-body.dashboard-active #view-airway:not(.hidden), 
-body.dashboard-active #view-zugang:not(.hidden),
-body.dashboard-active #view-rosc-end:not(.hidden), 
-body.dashboard-active #view-abbruch-reason:not(.hidden), 
-body.dashboard-active #view-airway-doc:not(.hidden) {
+#view-decision:not(.hidden), 
+#view-joule:not(.hidden), 
+#view-cpr-resume:not(.hidden),
+#view-meds-menu:not(.hidden), 
+#view-airway:not(.hidden), 
+#view-zugang:not(.hidden),
+#view-rosc-end:not(.hidden), 
+#view-abbruch-reason:not(.hidden), 
+#view-airway-doc:not(.hidden) {
     position: absolute !important; 
     inset: 0 !important; 
     width: 100% !important; 
     height: 100% !important;
     background-color: #ffffff !important;
     border-radius: 50% !important;
-    overflow: hidden !important; /* Verhindert, dass Ecken aus dem Kreis ragen */
-    /* HIER KEINE FLEX- ODER STATIC-BEFEHLE MEHR! Das Grid übernimmt Tailwind in der HTML. */
+    overflow: hidden !important; 
 }
 
 /* SICHERHEITS-ANKER: Der Zurück-/Abbrechen-Button klebt bei Menüs immer ganz unten im Kreis! */
-body.dashboard-active #view-decision > button:last-child, 
-body.dashboard-active #view-joule > button:last-child, 
-body.dashboard-active #view-cpr-resume > button:last-child,
-body.dashboard-active #view-meds-menu > button:last-child, 
-body.dashboard-active #view-airway > button:last-child, 
-body.dashboard-active #view-zugang > button:last-child,
-body.dashboard-active #view-rosc-end > button:last-child, 
-body.dashboard-active #view-abbruch-reason > button:last-child {
+#view-decision > button:last-child, 
+#view-joule > button:last-child, 
+#view-cpr-resume > button:last-child,
+#view-meds-menu > button:last-child, 
+#view-airway > button:last-child, 
+#view-zugang > button:last-child,
+#view-rosc-end > button:last-child, 
+#view-abbruch-reason > button:last-child {
     position: absolute !important; 
     bottom: 25px !important; 
     left: 50% !important; 
@@ -231,8 +214,6 @@ body.dashboard-active #view-abbruch-reason > button:last-child {
 /* ==========================================
    9. ARCHITEKTUR-FIX: SATELLITEN AUSBLENDEN
    ========================================== */
-/* Sobald die App im Dashboard ist UND die Menü-Klasse `center-menu-open` aktiv ist, 
-   schießt das CSS die Satelliten vollautomatisch in die Unsichtbarkeit! */
 body.dashboard-active.center-menu-open .satellite-btn,
 body.dashboard-active.center-menu-open #btn-airway,
 body.dashboard-active.center-menu-open #btn-cpr {
