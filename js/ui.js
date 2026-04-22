@@ -27,8 +27,7 @@ window.CPR.UI = (function() {
             const targetEl = document.getElementById(targetId);
             if (targetEl) { 
                 targetEl.classList.remove('hidden'); 
-                // BUGFIX: Wir erzwingen jetzt bei ALLEN runden Menüs ein vertikales Grid (flex-col).
-                // Dadurch verschwinden die Joule-Buttons nie wieder im unsichtbaren Rand!
+                // Das zwingt das Joule-Menü vertikal untereinander, sodass es sichtbar bleibt!
                 targetEl.classList.add('flex', 'flex-col'); 
             }
             
@@ -279,14 +278,26 @@ window.CPR.UI = (function() {
             this.updateSmartMedsButton();
         },
 
+        // 🌟 PERFEKTE LINIEN-GEOMETRIE MIT AUTO-SCALING 🌟
         updateCircle: function(canvasId, pct, color) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
             
+            // BUGFIX: Holt sich die CSS-Größe und zwingt den Canvas auf diese Pixel-Auflösung, 
+            // damit der Kreis nicht mehr außerhalb des Bildschirms gezeichnet wird!
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                if (canvas.width !== rect.width) canvas.width = rect.width;
+                if (canvas.height !== rect.height) canvas.height = rect.height;
+            }
+            
             const ctx = canvas.getContext('2d');
             const w = canvas.width;
             const h = canvas.height;
-            const center = w / 2;
+            const centerX = w / 2;
+            const centerY = h / 2;
+            // Falls er mal nicht exakt quadratisch ist, nimmt er den perfekten Radius
+            const center = Math.min(centerX, centerY);
 
             const isMain = (canvasId === 'progress-circle');
             const lineW = isMain ? 8 : 4; 
@@ -294,15 +305,17 @@ window.CPR.UI = (function() {
 
             ctx.clearRect(0, 0, w, h);
             
+            // GRAUER TRACK
             ctx.beginPath();
-            ctx.arc(center, center, r, 0, 2 * Math.PI);
+            ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
             ctx.strokeStyle = '#f1f5f9';
             ctx.lineWidth = lineW;
             ctx.stroke();
             
+            // FARBIGER FORTSCHRITT
             if (pct > 0) {
                 ctx.beginPath();
-                ctx.arc(center, center, r, -0.5 * Math.PI, (2 * Math.PI * pct) - 0.5 * Math.PI);
+                ctx.arc(centerX, centerY, r, -0.5 * Math.PI, (2 * Math.PI * pct) - 0.5 * Math.PI);
                 ctx.strokeStyle = color || '#06b6d4'; 
                 ctx.lineWidth = lineW;
                 ctx.lineCap = 'round';
