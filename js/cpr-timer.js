@@ -2,9 +2,6 @@ window.CPR = window.CPR || {};
 
 /**
  * CPR Assist - Main CPR Timer (Medical Grade)
- * - Robuster 1-Sekunden-Takt (setInterval) statt fehleranfälliger Date.now() Differenz.
- * - Unterstützt beide HTML-Layouts (Static Index & remodelViewTimer).
- * - "NaN"-Bug bei Initialisierung restlos behoben.
  */
 window.CPR.CprTimer = (function() {
     let interval = null;
@@ -22,24 +19,15 @@ window.CPR.CprTimer = (function() {
             const sec = state.cprSeconds || 0;
             const remaining = Math.max(0, cycleLen - sec); 
 
+            // Standard HTML Elemente aus index.html ansprechen
             const elTimer = document.getElementById('cycle-timer');
             const cycleLabel = document.getElementById('cycle-label');
             const mainBtnArea = document.getElementById('main-btn-area');
             
-            // Elemente für Layout A (index.html)
             const btnAnalyze = document.getElementById('btn-permanent-analyze');
             const pulseBg = document.getElementById('analyze-pulse-bg');
             const txtTop = document.getElementById('analyze-text-top');
             const txtMain = document.getElementById('analyze-text-main');
-            const topTextWrapperSpan = document.querySelector('.vt-top-text span');
-
-            // Elemente für Layout B (remodelViewTimer)
-            const topTextSpan = document.getElementById('timer-top-text');
-            const elPrepare = document.getElementById('inner-prepare-alert');
-            const elPrecharge = document.getElementById('inner-precharge-alert');
-            const elPrepTime = document.getElementById('prepare-time');
-            const elPrechTime = document.getElementById('precharge-time');
-            const bottomInfo = document.querySelector('.vt-bottom-info');
 
             if (elTimer) {
                 const m = Math.floor(remaining / 60).toString().padStart(2, '0');
@@ -47,15 +35,12 @@ window.CPR.CprTimer = (function() {
                 elTimer.innerText = m + ':' + s;
 
                 if (sec >= cycleLen) {
-                    // ==========================================
-                    // OVERTIME: ANALYSE FÄLLIG!
-                    // ==========================================
+                    // OVERTIME: ANALYSE FÄLLIG
                     elTimer.classList.add('text-[#E3000F]', 'animate-pulse');
                     elTimer.classList.remove('text-slate-800', 'text-amber-500');
                     if (cycleLabel) cycleLabel.classList.add('text-[#E3000F]');
                     if (mainBtnArea) mainBtnArea.classList.add('shadow-[0_0_30px_rgba(227,0,15,0.25)]');
 
-                    // Layout A
                     if (btnAnalyze) {
                         btnAnalyze.classList.remove('border-slate-200');
                         btnAnalyze.classList.add('border-red-400', 'shadow-[0_4px_20px_rgba(227,0,15,0.25)]');
@@ -69,55 +54,21 @@ window.CPR.CprTimer = (function() {
                         txtMain.innerHTML = '<i class="fa-solid fa-bolt text-red-500"></i> Hier drücken';
                         txtMain.className = "text-[18px] font-black text-[#E3000F] uppercase tracking-widest leading-none flex items-center gap-2 animate-pulse";
                     }
-                    if (topTextWrapperSpan && !topTextSpan) {
-                        topTextWrapperSpan.innerText = "ANALYSE FÄLLIG";
-                        topTextWrapperSpan.className = "text-[#E3000F] font-black animate-pulse text-[12px] tracking-widest";
-                    }
-
-                    // Layout B
-                    if (topTextSpan) {
-                        topTextSpan.innerText = "ANALYSE FÄLLIG";
-                        topTextSpan.className = "text-[#E3000F] font-black animate-pulse text-[12px] tracking-widest";
-                    }
-                    if (elPrepare) elPrepare.classList.add('hidden');
-                    if (elPrecharge) elPrecharge.classList.add('hidden');
-                    if (bottomInfo) bottomInfo.classList.add('hidden');
 
                 } else {
-                    // ==========================================
                     // NORMAL: TIMER LÄUFT NOCH
-                    // ==========================================
                     elTimer.classList.remove('text-[#E3000F]', 'animate-pulse');
                     if (cycleLabel) cycleLabel.classList.remove('text-[#E3000F]');
                     if (mainBtnArea) mainBtnArea.classList.remove('shadow-[0_0_30px_rgba(227,0,15,0.25)]');
 
-                    // 30s und 15s Warnungen (Layout B)
-                    if (remaining <= 30 && remaining > 15) {
-                        if (elPrepare) elPrepare.classList.remove('hidden');
-                        if (elPrecharge) elPrecharge.classList.add('hidden');
-                        if (elTimer) elTimer.style.transform = 'translateY(5px)';
-                        if (elPrepTime) elPrepTime.innerText = remaining;
-
+                    if (remaining <= 15) {
                         elTimer.classList.add('text-amber-500');
                         elTimer.classList.remove('text-slate-800');
-                    } else if (remaining <= 15 && remaining > 0) {
-                        if (elPrepare) elPrepare.classList.add('hidden');
-                        if (elPrecharge) elPrecharge.classList.remove('hidden');
-                        if (elTimer) elTimer.style.transform = 'translateY(5px)';
-                        if (elPrechTime) elPrechTime.innerText = remaining;
-
-                        elTimer.classList.add('text-[#E3000F]');
-                        elTimer.classList.remove('text-slate-800', 'text-amber-500');
                     } else {
-                        if (elPrepare) elPrepare.classList.add('hidden');
-                        if (elPrecharge) elPrecharge.classList.add('hidden');
-                        if (elTimer) elTimer.style.transform = 'translateY(0)';
-
                         elTimer.classList.add('text-slate-800');
-                        elTimer.classList.remove('text-amber-500', 'text-[#E3000F]');
+                        elTimer.classList.remove('text-amber-500');
                     }
-
-                    // Layout A
+                    
                     if (btnAnalyze) {
                         btnAnalyze.classList.remove('border-red-400', 'shadow-[0_4px_20px_rgba(227,0,15,0.25)]');
                         btnAnalyze.classList.add('border-slate-200');
@@ -131,17 +82,6 @@ window.CPR.CprTimer = (function() {
                         txtMain.innerHTML = '<i class="fa-solid fa-bolt text-red-500"></i> Hier drücken';
                         txtMain.className = "text-[16px] font-black text-[#E3000F] uppercase tracking-widest leading-none flex items-center gap-2 transition-colors";
                     }
-                    if (topTextWrapperSpan && !topTextSpan) {
-                        topTextWrapperSpan.innerText = "BEI ANALYSE DRÜCKEN";
-                        topTextWrapperSpan.className = "text-slate-500 font-bold text-[11px] uppercase tracking-widest";
-                    }
-
-                    // Layout B
-                    if (topTextSpan) {
-                        topTextSpan.innerText = "Bei Analyse drücken";
-                        topTextSpan.className = "text-slate-500 font-bold text-[11px] uppercase tracking-widest";
-                    }
-                    if (bottomInfo) bottomInfo.classList.remove('hidden');
                 }
             }
 
@@ -164,7 +104,7 @@ window.CPR.CprTimer = (function() {
             const state = window.CPR.AppState;
             if (!state || state.isRunning === false) return;
 
-            // 🌟 Echter 1-Sekunden Takt
+            // Echter 1-Sekunden Takt
             const oldSec = state.cprSeconds || 0;
             state.cprSeconds = oldSec + 1; 
             
