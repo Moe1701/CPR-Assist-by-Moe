@@ -281,34 +281,30 @@ window.CPR.UI = (function() {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
             
-            const rect = canvas.getBoundingClientRect();
-            const wInt = Math.round(rect.width);
-            const hInt = Math.round(rect.height);
-
-            if (wInt > 0 && hInt > 0) {
-                if (canvas.width !== wInt) canvas.width = wInt;
-                if (canvas.height !== hInt) canvas.height = hInt;
-            }
+            // Feste 330px Auflösung
+            canvas.width = 330;
+            canvas.height = 330;
             
             const ctx = canvas.getContext('2d');
             const w = canvas.width;
             const h = canvas.height;
             const centerX = w / 2;
             const centerY = h / 2;
-            const center = Math.min(centerX, centerY);
 
             const isMain = (canvasId === 'progress-circle');
             const lineW = isMain ? 10 : 4; 
-            const r = center - (lineW / 2); 
+            const r = centerX - (lineW / 2); 
 
             ctx.clearRect(0, 0, w, h);
             
+            // Grauer Tracking-Ring (Immer da)
             ctx.beginPath();
             ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
-            ctx.strokeStyle = '#f1f5f9';
+            ctx.strokeStyle = '#e2e8f0'; // slate-200, gut sichtbar auf weiß
             ctx.lineWidth = lineW;
             ctx.stroke();
             
+            // Farbiger Fortschritt
             if (pct > 0) {
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, r, -0.5 * Math.PI, (2 * Math.PI * pct) - 0.5 * Math.PI);
