@@ -1,5 +1,7 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
+ * BUGFIX: Zerstörerische remodelViewTimer-Funktion restlos entfernt.
+ * LOGIC FIX: Timer-Start Parameter-Inversion (Resume vs Reset) ist korrigiert!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
