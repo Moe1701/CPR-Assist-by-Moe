@@ -1,8 +1,5 @@
 /**
  * CPR Assist - Master Controller (Medical Grade Background-Safe)
- * BUGFIX: Event-Listener Blockade auf dem Analyse-Button behoben!
- * CLEANUP: Zerstörerische remodelViewTimer-Funktion restlos entfernt.
- * LOGIC FIX: Timer-Start Parameter-Inversion (Resume vs Reset) ist korrigiert!
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -131,7 +128,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (UI && typeof UI.recalcMeds === 'function') UI.recalcMeds();
         AppState.isRunning = true;
         
-        // 🌟 LOGIK-FIX: Wenn shouldResetTimer = true, darf er NICHT resumen (!shouldResetTimer)
         if (CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
             const resume = !shouldResetTimer;
             CPR.CPRTimer.start(resume);
@@ -472,7 +468,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         addClick('main-btn-area', (e) => {
-            if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
+            const isAnalyzeBtn = e.target.closest('#btn-permanent-analyze');
+            if (!isAnalyzeBtn && (e.target.closest('button') || e.target.closest('select') || e.target.closest('input'))) return;
             if (Date.now() - (Globals.lastMenuAction || 0) < 500) return;
             
             if (AppState.state === 'OB_COMPRESSIONS') { 
@@ -675,7 +672,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 🌟 CLEANUP: App.js feuert nur noch Befehle. Die Tab-Klicks werden von log-timeline.js verwaltet!
     function initProtocolEvents() {
         addClick('btn-undo-log', (e) => { 
             e.stopPropagation(); 
@@ -698,7 +694,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const panel = document.getElementById('protocol-panel');
             if (panel) {
                 panel.classList.toggle('translate-y-full'); 
-                // Wenn das Panel hochfährt, zwingen wir LogTimeline zum Zeichnen der aktuellen Daten!
                 if (!panel.classList.contains('translate-y-full')) {
                     if (window.CPR.LogTimeline && typeof window.CPR.LogTimeline.forceRender === 'function') window.CPR.LogTimeline.forceRender();
                 }
@@ -709,7 +704,6 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-toggle-hits', (e) => { e.stopPropagation(); document.getElementById('hits-panel')?.classList.toggle('translate-y-full'); });
         addClick('btn-close-hits', (e) => { e.stopPropagation(); document.getElementById('hits-panel')?.classList.add('translate-y-full'); });
 
-        // Tab-Switcher für das HITS-Menü bleibt unangetastet
         addClick('btn-tab-hits', (e) => { e.stopPropagation(); e.target.classList.replace('text-slate-500', 'text-slate-800'); e.target.classList.add('bg-white', 'shadow-sm'); const tAna = document.getElementById('btn-tab-anamnese'); if(tAna) { tAna.classList.replace('text-slate-800', 'text-slate-500'); tAna.classList.remove('bg-white', 'shadow-sm'); } const vHits = document.getElementById('view-hits'); if(vHits) vHits.classList.replace('hidden', 'flex'); const vAna = document.getElementById('view-anamnese'); if(vAna) vAna.classList.replace('flex', 'hidden'); });
         addClick('btn-tab-anamnese', (e) => { e.stopPropagation(); e.target.classList.replace('text-slate-500', 'text-slate-800'); e.target.classList.add('bg-white', 'shadow-sm'); const tHits = document.getElementById('btn-tab-hits'); if(tHits) { tHits.classList.replace('text-slate-800', 'text-slate-500'); tHits.classList.remove('bg-white', 'shadow-sm'); } const vAna = document.getElementById('view-anamnese'); if(vAna) vAna.classList.replace('hidden', 'flex'); const vHits = document.getElementById('view-hits'); if(vHits) vHits.classList.replace('flex', 'hidden'); });
     }
@@ -797,7 +791,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (AppState.isRunning !== false) { 
                     startMainTimer(); 
                     if (AppState.state === 'RUNNING' && CPR.CPRTimer && typeof CPR.CPRTimer.start === 'function') {
-                        // 🌟 LOGIK-FIX: Beim Neuladen der Session MUSS der Timer resumen (true)
                         CPR.CPRTimer.start(true); 
                     } else if (CPR.CPRTimer && typeof CPR.CPRTimer.updateUI === 'function') {
                         CPR.CPRTimer.updateUI();
@@ -810,7 +803,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (AppState.adrSeconds > 0 && CPR.AdrTimer && typeof CPR.AdrTimer.start === 'function') CPR.AdrTimer.start(true); 
             }
 
-            // Sicherstellen, dass das Protokoll nach dem Laden der Session sofort gerendert wird
             if (window.CPR.LogTimeline && typeof window.CPR.LogTimeline.forceRender === 'function') window.CPR.LogTimeline.forceRender();
             Utils.sysLog("Session loaded successfully."); 
             return true;
@@ -838,7 +830,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         if (loadSession()) {
             const st = AppState.state || 'IDLE'; 
-            // Nach dem Laden prüfen, ob wir im Timer sind -> Kreis klein machen!
             if (st !== 'IDLE' && st.indexOf('OB_') !== 0) {
                 if (st === 'RUNNING') {
                     if (UI && typeof UI.updateOrbitGeometry === 'function') UI.updateOrbitGeometry('small');
@@ -850,108 +841,3 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 100);
 });
-
-// =========================================================================
-// UI/UX DEBUG MODUS (Fadenkreuz & Injection-Logik) - 100% AUTARK
-// =========================================================================
-(function() {
-    let isDebugActive = false;
-
-    const canvas = document.createElement('canvas');
-    canvas.id = 'debug-canvas';
-    canvas.style.position = 'fixed';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    canvas.style.width = '100vw';
-    canvas.style.height = '100vh';
-    canvas.style.zIndex = '999999';
-    canvas.style.pointerEvents = 'none'; 
-    canvas.style.display = 'none'; 
-    document.body.appendChild(canvas);
-
-    function drawGrid() {
-        if (!isDebugActive) return;
-        
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const topStats = document.getElementById('top-stats-container');
-        const header = document.querySelector('header');
-        let topY = header ? header.getBoundingClientRect().bottom : 0;
-        if (topStats && !topStats.classList.contains('hidden')) {
-            topY = topStats.getBoundingClientRect().bottom;
-        }
-
-        const bottomY = window.innerHeight;
-        const originY = topY + ((bottomY - topY) / 2); 
-        const originX = window.innerWidth / 2; 
-
-        ctx.strokeStyle = 'rgba(255, 0, 255, 0.6)';
-        ctx.fillStyle = 'rgba(255, 0, 255, 0.9)';
-        ctx.font = 'bold 10px monospace';
-        ctx.lineWidth = 1.5;
-
-        ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); ctx.stroke();
-
-        const step = 10;
-        for(let x = originX; x < canvas.width; x += step) {
-            ctx.beginPath(); ctx.moveTo(x, originY - 4); ctx.lineTo(x, originY + 4); ctx.stroke();
-            if((x - originX) % 50 === 0 && x !== originX) ctx.fillText(`+${Math.round(x - originX)}`, x + 2, originY - 8);
-        }
-        for(let x = originX; x > 0; x -= step) {
-            ctx.beginPath(); ctx.moveTo(x, originY - 4); ctx.lineTo(x, originY + 4); ctx.stroke();
-            if((originX - x) % 50 === 0 && x !== originX) ctx.fillText(`-${Math.round(originX - x)}`, x - 25, originY - 8);
-        }
-        for(let y = originY; y < canvas.height; y += step) {
-            ctx.beginPath(); ctx.moveTo(originX - 4, y); ctx.lineTo(originX + 4, y); ctx.stroke();
-            if((y - originY) % 50 === 0 && y !== originY) ctx.fillText(`+${Math.round(y - originY)}`, originX + 8, y + 4);
-        }
-        for(let y = originY; y > 0; y -= step) {
-            ctx.beginPath(); ctx.moveTo(originX - 4, y); ctx.lineTo(originX + 4, y); ctx.stroke();
-            if((originY - y) % 50 === 0 && y !== originY) ctx.fillText(`-${Math.round(originY - y)}`, originX + 8, y + 4);
-        }
-        
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        ctx.fillText("0,0", originX + 8, originY - 8);
-    }
-
-    window.addEventListener('resize', drawGrid);
-    setInterval(drawGrid, 500);
-
-    setTimeout(() => {
-        const resetBtn = document.getElementById('btn-hard-reset');
-        if (resetBtn) {
-            const toggleBtn = document.createElement('button');
-            toggleBtn.id = 'btn-toggle-debug';
-            toggleBtn.className = 'w-full bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-sm border border-slate-300 active:scale-95 flex items-center justify-center gap-2 mb-4 transition-all';
-            toggleBtn.innerHTML = '<i class="fa-solid fa-ruler-combined text-lg"></i> Layout Grid (An / Aus)';
-            
-            toggleBtn.addEventListener('click', (e) => {
-                e.preventDefault(); e.stopPropagation();
-                if(window.CPR && window.CPR.Utils && window.CPR.Utils.vibrate) window.CPR.Utils.vibrate(20);
-                
-                isDebugActive = !isDebugActive;
-                
-                if (isDebugActive) {
-                    canvas.style.display = 'block';
-                    document.body.classList.add('debug-mode'); 
-                    toggleBtn.classList.replace('bg-slate-100', 'bg-indigo-100');
-                    toggleBtn.classList.replace('text-slate-700', 'text-indigo-700');
-                    toggleBtn.classList.replace('border-slate-300', 'border-indigo-300');
-                    drawGrid();
-                } else {
-                    canvas.style.display = 'none';
-                    document.body.classList.remove('debug-mode'); 
-                    toggleBtn.classList.replace('bg-indigo-100', 'bg-slate-100');
-                    toggleBtn.classList.replace('text-indigo-700', 'text-slate-700');
-                    toggleBtn.classList.replace('border-indigo-300', 'border-slate-300');
-                }
-            });
-
-            resetBtn.parentNode.insertBefore(toggleBtn, resetBtn);
-        }
-    }, 1500); 
-})();
