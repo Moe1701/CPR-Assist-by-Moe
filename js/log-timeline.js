@@ -1,15 +1,16 @@
 /**
- * CPR Assist - Log Timeline & KPI Stats Modul (V68 - SAMPLER Alter/Gewicht Integration)
+ * CPR Assist - Log Timeline & KPI Stats Modul (V68 + V56 EKG Timeline Patch)
  * - FEATURE: Neues "STATISTIK" Dashboard für das medizinische Debriefing.
- * - ENGINE: Berechnet On-The-Fly CCF, Pre-Shock Pausen (Min/Max/Ø), Amiodaron-Intervalle, Gesamt-Joule und Zeit bis ROSC.
- * - UX: Manuell erfasstes Alter und Gewicht aus der Anamnese wird nahtlos in die SBAR Übersicht injiziert.
+ * - UX: Manuell erfasstes Alter und Gewicht aus der Anamnese wird nahtlos injiziert.
+ * - PATCH: Re-Integration der horizontalen EKG-Style Timeline mit "Naked Icons" aus V56.
  */
 
 window.CPR = window.CPR || {};
-
 window.CPR.LogTimeline = (function() {
     let currentView = 'list'; 
+    let liveMarkerInterval = null;
     
+    // --- 1. ICON LOGIK (Für die vertikale Liste) ---
     function getIconData(txt) {
         if (!txt) return { icon: '•', color: 'text-slate-400', bg: 'bg-slate-100' };
         const t = txt.toLowerCase();
@@ -22,19 +23,76 @@ window.CPR.LogTimeline = (function() {
         
         if (t.includes('nicht schockbar')) return { icon: '🚫', type: 'analysis-no', color: 'text-white', bg: 'bg-slate-800' };
         if (t.includes('schockbar')) return { icon: '⚡', type: 'analysis-yes', color: 'text-slate-800', bg: 'bg-amber-400' };
+        if (t.includes('rhythmusanalyse')) return { icon: '❤️‍🩹', type: 'analysis', color: 'text-white', bg: 'bg-indigo-500' };
+
         if (t.includes('hits') || t.includes('sampler') || t.includes('anamnese')) return { icon: '📋', type: 'info', color: 'text-white', bg: 'bg-indigo-500' };
         if (t.includes('adrenalin')) return { icon: '💉', type: 'adr', color: 'text-white', bg: 'bg-[#E3000F]' };
         if (t.includes('amiodaron') || t.includes('amio')) return { icon: '💊', type: 'amio', color: 'text-white', bg: 'bg-purple-500' };
         if (t.includes('atemweg:') || t.includes('beatmungen durchge')) return { icon: '🫁', type: 'airway', color: 'text-white', bg: 'bg-cyan-500' };
         if (t.includes('zugang:')) return { icon: '🩸', type: 'access', color: 'text-white', bg: 'bg-rose-500' };
-        if (t.includes('start rea') || t.includes('kompression')) return { icon: '▶', type: 'start', color: 'text-white', bg: 'bg-emerald-500' };
+        if (t.includes('start rea') || t.includes('kompression')) return { icon: '▶️', type: 'start', color: 'text-white', bg: 'bg-emerald-500' };
         if (t.includes('rosc!')) return { icon: '❤️', type: 'rosc', color: 'text-white', bg: 'bg-emerald-500' };
         if (t.includes('re-arrest')) return { icon: '💔', type: 'arrest', color: 'text-white', bg: 'bg-[#E3000F]' };
-        if (t.includes('abbruch') || t.includes('beendet')) return { icon: '🛑', type: 'end', color: 'text-white', bg: 'bg-slate-800' };
-        
+        if (t.includes('abbruch') || t.includes('beendet')) return { icon: '🏁', type: 'end', color: 'text-white', bg: 'bg-slate-800' };
         return { icon: '🔹', type: 'default', color: 'text-slate-400', bg: 'bg-slate-100' };
     }
 
+    // --- EKG TIMELINE HELFER (aus V56) ---
+    function getEKGIconData(txt) {
+        if (!txt) return null;
+        const t = txt.toLowerCase();
+        
+        if (t.includes('schock') && !t.includes('schockbar')) {
+            const match = t.match(/(\d+)\s*[jJ]/);
+            if (match) return { icon: match[1] + 'J', isText: true, isJoule: true };
+            return { icon: '⚡', isText: false };
+        }
+        
+        if (t.includes('nicht schockbar')) return { 
+            htmlIcon: '<div class="relative inline-block">⚡<div class="absolute top-1/2 left-[-2px] right-[-2px] h-[1.5px] bg-red-500 rotate-45 -translate-y-1/2"></div></div>', 
+            isText: false
+        };
+        if (t.includes('schockbar')) return { icon: '⚡', isText: false };
+        if (t.includes('hits') || t.includes('sampler') || t.includes('anamnese')) return { icon: '📋', isText: false };
+        if (t.includes('adrenalin')) return { icon: '💉', isText: false };
+        if (t.includes('amiodaron') || t.includes('amio')) return { icon: '💊', isText: false };
+        if (t.includes('atemweg:') || t.includes('beatmungen durchge')) return { icon: '🫁', isText: false };
+        if (t.includes('zugang:')) return { icon: '🩸', isText: false };
+        if (t.includes('start rea')) return { icon: '▶️', isText: false };
+        if (t.includes('rosc!')) return { icon: '❤️', isText: false };
+        if (t.includes('re-arrest')) return { icon: '💔', isText: false };
+        if (t.includes('abbruch') || t.includes('beendet')) return { icon: '🏁', isText: false };
+        
+        // Unwichtige Logs auf der EKG-Linie ausblenden
+        if (t.includes('kompression pause') || t.includes('kompression fortgesetzt') || 
+            t.includes('beatmungen übersprungen') || t.includes('modus manuell') ||
+            t.includes('atemweg entfernt')) return null;
+        
+        return { icon: '🔹', isText: false };
+    }
+
+    function extractPauses(data, currentAppSec) {
+        let pauses = [];
+        let currentStart = null;
+        data.forEach(d => {
+            const t = d.action.toLowerCase();
+            if (t.includes('pause') || t.includes('stop') || t.includes('analyse') || t.includes('schockbar') || t.includes('unterbroch')) {
+                if (currentStart === null) currentStart = d.secondsFromStart;
+            }
+            if (t.includes('fortgesetzt') || t.includes('weiter') || t.includes('start')) {
+                if (currentStart !== null) {
+                    pauses.push({ start: currentStart, end: d.secondsFromStart, duration: d.secondsFromStart - currentStart });
+                    currentStart = null;
+                }
+            }
+        });
+        if (currentStart !== null) {
+            pauses.push({ start: currentStart, end: currentAppSec, duration: currentAppSec - currentStart, ongoing: true });
+        }
+        return pauses;
+    }
+
+    // --- 2. RENDER STEUERUNG ---
     function renderCurrentView() {
         if (currentView === 'list') renderList();
         else if (currentView === 'timeline') renderTimeline();
@@ -45,6 +103,7 @@ window.CPR.LogTimeline = (function() {
     function switchTab(tabId) {
         currentView = tabId;
 
+        // Button UI anpassen
         ['list', 'timeline', 'summary', 'stats'].forEach(id => {
             const btn = document.getElementById(`btn-view-${id}`);
             if (btn) {
@@ -56,6 +115,7 @@ window.CPR.LogTimeline = (function() {
             }
         });
 
+        // Container Sichtbarkeit steuern
         ['list', 'timeline', 'summary', 'stats'].forEach(id => {
             const content = document.getElementById(`log-${id}-content`);
             if (content) {
@@ -70,16 +130,22 @@ window.CPR.LogTimeline = (function() {
         });
 
         renderCurrentView();
+
+        // Live Marker nur im Timeline-Tab laufen lassen
+        if (tabId === 'timeline') startLiveMarkerInterval();
+        else stopLiveMarkerInterval();
     }
 
+    // --- 3. DIE VIEWS (LIST, TIMELINE, SUMMARY) ---
+    
     function renderList() {
         const container = document.getElementById('log-list-content');
         if (!container) return;
         
         const data = window.CPR.AppState?.protocolData || [];
         if (data.length === 0) { 
-            container.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs font-bold mt-10">Das Protokoll ist noch leer.</div>'; 
-            return; 
+            container.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs font-bold mt-10">Das Protokoll ist noch leer.</div>';
+            return;
         }
         
         let html = '<div class="flex flex-col p-2 gap-1 pb-10">';
@@ -106,37 +172,134 @@ window.CPR.LogTimeline = (function() {
         const container = document.getElementById('log-timeline-content');
         if (!container) return;
         
-        const data = window.CPR.AppState?.protocolData || [];
-        if (data.length === 0) { 
-            container.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs font-bold mt-10">Noch keine Einträge vorhanden.</div>'; 
-            return; 
+        const state = window.CPR.AppState || {};
+        const data = state.protocolData || [];
+        
+        if (data.length === 0) {
+            container.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs font-bold mt-10">Warte auf Ereignisse...</div>';
+            return;
         }
-        
-        let html = '<div class="flex flex-col p-4 relative pb-10">';
-        html += '<div class="absolute left-8 top-4 bottom-4 w-0.5 bg-slate-200"></div>';
-        
-        data.forEach(item => {
-            const iconData = getIconData(item.action);
-            const relTime = window.CPR.Utils.formatRelative(item.secondsFromStart);
-            html += `
-                <div class="flex items-center gap-4 mb-4 relative z-10">
-                    <div class="w-8 h-8 rounded-full ${iconData.bg} ${iconData.color} flex items-center justify-center text-sm font-black shadow-sm shrink-0 border-2 border-white">
-                        ${iconData.icon}
-                    </div>
-                    <div class="flex flex-col bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm flex-1">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-[11px] font-black text-[#E3000F]">${relTime}</span>
-                            <span class="text-[9px] font-bold text-slate-400">${item.time}</span>
-                        </div>
-                        <span class="text-[11px] font-bold text-slate-700 leading-tight">${item.action}</span>
-                    </div>
+
+        // Berechne die aktuelle Laufzeit sicher
+        let currentAppSec = state.totalSeconds || 0;
+        if (data.length > 0 && data[data.length - 1].secondsFromStart > currentAppSec) {
+            currentAppSec = data[data.length - 1].secondsFromStart;
+        }
+
+        let html = `
+        <div class="flex flex-col h-full overflow-hidden relative w-full">
+            <div class="sticky top-0 z-50 bg-slate-50 border-b border-slate-200 px-2 py-2 shrink-0 shadow-sm">
+                <div class="bg-white p-1.5 rounded-xl border border-slate-100 flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5">
+                    <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm">▶️</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Start</span></div>
+                    <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm text-amber-500">⚡</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Schockbar</span></div>
+                    <div class="flex items-center gap-1"><span class="text-[10px] font-black text-[#E3000F] drop-shadow-sm">150J</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Schock</span></div>
+                    <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm">💉</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Med.</span></div>
+                    <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm">🫁</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Atemweg</span></div>
+                    <div class="flex items-center gap-1"><div class="w-4 h-1 bg-red-500 rounded"></div><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Pause</span></div>
                 </div>
-            `;
-        });
-        html += '</div>';
+            </div>
+            <div class="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-slate-50 relative pb-24 pt-3 px-3">
+        `;
+
+        const filtered = data.map(d => ({ ...d, iconData: getEKGIconData(d.action) })).filter(d => d.iconData !== null);
+        const pauses = extractPauses(data, currentAppSec);
         
+        const cycleDuration = 120;
+        let totalCycles = Math.max(4, Math.ceil(currentAppSec / cycleDuration));
+        let currentStartSec = 0;
+        const yOffsets = [12, -12, 26, -26, 40, -40];
+
+        for (let i = 0; i < totalCycles; i++) {
+            const cycleEndSec = currentStartSec + cycleDuration;
+            const cycleEvents = filtered.filter(e => e.secondsFromStart >= currentStartSec && e.secondsFromStart < cycleEndSec);
+            const isActiveBlock = (currentAppSec >= currentStartSec && currentAppSec <= cycleEndSec);
+
+            html += `
+                <div class="relative w-full h-[110px] mb-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden shrink-0">
+                    <div class="absolute top-1/2 left-1 -translate-y-1/2 text-[8px] font-black text-slate-400 bg-white/80 px-1 z-10">${window.CPR.Utils.formatTime(currentStartSec)}</div>
+                    <div class="absolute top-1/2 right-1 -translate-y-1/2 text-[8px] font-black text-slate-400 bg-white/80 px-1 z-10">${window.CPR.Utils.formatTime(cycleEndSec)}</div>
+                    
+                    <div class="absolute inset-y-0 left-7 right-7 pointer-events-none">
+                        <div class="absolute top-1/2 left-0 right-0 h-[2px] bg-slate-100 rounded-full -translate-y-1/2 shadow-inner z-0"></div>
+            `;
+
+            // 15s Lineal
+            for (let t = 15; t < 120; t += 15) {
+                const tickSec = currentStartSec + t;
+                const pct = (t / 120) * 100;
+                const tickH = (t === 60) ? 'h-3' : 'h-1.5';
+                html += `<div class="absolute top-1/2 w-px ${tickH} bg-slate-300 -translate-y-1/2 -translate-x-1/2 z-10" style="left: ${pct}%;"></div>`;
+                html += `<div class="absolute top-1/2 mt-3 text-[6px] font-black text-slate-400 -translate-y-1/2 -translate-x-1/2 z-10" style="left: ${pct}%;">${window.CPR.Utils.formatTime(tickSec)}</div>`;
+            }
+
+            // CPR Pausen (Rote Balken)
+            pauses.forEach(p => {
+                const pStart = Math.max(p.start, currentStartSec);
+                const pEnd = Math.min(p.end, cycleEndSec);
+                if (pStart < pEnd) {
+                    const pctStart = ((pStart - currentStartSec) / cycleDuration) * 100;
+                    const pctEnd = ((pEnd - currentStartSec) / cycleDuration) * 100;
+                    const widthPct = pctEnd - pctStart;
+                    html += `
+                        <div class="absolute top-1/2 h-2.5 bg-red-500 rounded-sm flex items-center justify-center -translate-y-1/2 z-[5]"
+                             style="left: ${pctStart}%; width: ${widthPct}%;">
+                             ${widthPct > 4 ? `<span class="text-[6px] font-black text-white shadow-sm">${p.duration}s</span>` : ''}
+                        </div>
+                    `;
+                }
+            });
+
+            // Live Marker
+            if (isActiveBlock) {
+                const markerPct = ((currentAppSec - currentStartSec) / cycleDuration) * 100;
+                html += `
+                        <div class="live-time-marker absolute top-0 bottom-0 w-[2px] bg-red-500 z-[15] shadow-[0_0_8px_rgba(239,68,68,0.8)]" 
+                             data-start="${currentStartSec}" data-end="${cycleEndSec}" 
+                             style="left: ${markerPct}%;">
+                             <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 shadow-sm"></div>
+                             <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 shadow-sm"></div>
+                        </div>
+                `;
+            }
+
+            // Icons platzieren (Staggering)
+            cycleEvents.forEach((ev, idx) => {
+                const secInCycle = ev.secondsFromStart - currentStartSec;
+                const pct = (secInCycle / cycleDuration) * 100;
+                const yOff = yOffsets[idx % yOffsets.length];
+                const isTop = yOff < 0; 
+                const lineH = Math.abs(yOff);
+                const linePosClass = isTop ? 'bottom-1/2 mb-[1px]' : 'top-1/2 mt-[1px]';
+
+                const iconContent = ev.iconData.htmlIcon || ev.iconData.icon;
+                
+                let renderIcon = '';
+                if (ev.iconData.isJoule) {
+                    renderIcon = `<span class="text-[10px] font-black text-[#E3000F] drop-shadow-[0_0_2px_rgba(255,255,255,1)] tracking-tighter">${iconContent}</span>`;
+                } else if (ev.iconData.isText) {
+                    renderIcon = `<span class="text-[9px] font-black text-slate-700 drop-shadow-[0_0_2px_rgba(255,255,255,1)]">${iconContent}</span>`;
+                } else {
+                    renderIcon = `<span class="text-[13px] drop-shadow-sm leading-none block">${iconContent}</span>`;
+                }
+
+                const anchorTransform = isTop ? '-translate-y-full pb-[1px]' : 'pt-[1px]';
+
+                html += `
+                        <div class="absolute top-1/2 w-1 h-1 rounded-full bg-slate-400 -translate-x-1/2 -translate-y-1/2 z-[11]" style="left: ${pct}%;"></div>
+                        <div class="absolute w-px bg-slate-300 -translate-x-1/2 ${linePosClass} z-10" style="left: ${pct}%; height: ${lineH}px;"></div>
+                        <div class="absolute -translate-x-1/2 flex flex-col items-center justify-center z-20 ${anchorTransform}" 
+                             style="left: ${pct}%; top: calc(50% ${isTop ? '-' : '+'} ${lineH}px); z-index: ${20 + idx};">
+                            ${renderIcon}
+                        </div>
+                `;
+            });
+
+            html += `</div></div></div>`; // Ende Track & Block
+            currentStartSec = cycleEndSec;
+        }
+
+        html += `</div></div>`; // Ende Container
         container.innerHTML = html;
-        container.scrollTop = container.scrollHeight;
     }
 
     function renderSummary() {
@@ -150,7 +313,7 @@ window.CPR.LogTimeline = (function() {
         const ccf = arrSec > 0 ? Math.min(100, Math.round((compSec / arrSec) * 100)) : 0;
         const aData = state.anamneseData || {};
 
-        // 🌟 NEU: Integriert Alter & Gewicht aus den SAMPLER Leitfragen 🌟
+        // 🌟 NEU in V68: Integriert Alter & Gewicht aus den SAMPLER Leitfragen 🌟
         let ageStr = state.isPediatric ? (state.patientWeight ? `Kind (${state.patientWeight} kg)` : 'Kind') : 'Erwachsener';
         if (aData.alter || aData.gewicht) {
             let zusatz = [];
@@ -166,6 +329,7 @@ window.CPR.LogTimeline = (function() {
 
         let html = `<div class="p-4 flex flex-col gap-4 pb-12">`;
         
+        // S - Situation
         html += `<div class="bg-white rounded-xl border-l-4 border-[#E3000F] p-3 shadow-sm">
             <h4 class="text-[10px] font-black text-[#E3000F] uppercase tracking-widest mb-2">S - Situation</h4>
             <div class="grid grid-cols-2 gap-2">
@@ -175,6 +339,7 @@ window.CPR.LogTimeline = (function() {
             </div>
         </div>`;
 
+        // B - Background
         let sampStr = [];
         if (aData.sampler) {
             const sMap = {s:'S', a:'A', m:'M', p:'P', l:'L', e:'E', r:'R'};
@@ -190,6 +355,7 @@ window.CPR.LogTimeline = (function() {
             ${sampStr.length > 0 ? `<div class="mt-2 text-[10px] leading-tight text-slate-600 space-y-1 pt-2 border-t border-slate-100">${sampStr.join('<br>')}</div>` : ''}
         </div>`;
 
+        // A - Assessment
         let hitsArr = [];
         if (state.protocolData) hitsArr = state.protocolData.filter(d => d.action.includes('HITS: ')).map(h => h.action.replace('HITS: ', ''));
         
@@ -205,6 +371,7 @@ window.CPR.LogTimeline = (function() {
             </div>
         </div>`;
 
+        // R - Response
         html += `<div class="bg-white rounded-xl border-l-4 border-emerald-500 p-3 shadow-sm">
             <h4 class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">R - Response</h4>
             <div class="grid grid-cols-1 gap-1.5 text-[10px]">
@@ -220,6 +387,7 @@ window.CPR.LogTimeline = (function() {
         container.innerHTML = html;
     }
 
+    // --- 4. DAS ERWEITERTE "STATISTIK" DASHBOARD (V68) ---
     function renderStats() {
         const container = document.getElementById('log-stats-content');
         if (!container) return;
@@ -232,12 +400,14 @@ window.CPR.LogTimeline = (function() {
             return;
         }
 
+        // Grundwerte (Pausen & Dauer)
         const totalSec = state.totalSeconds || 0;
         const arrestSec = state.arrestSeconds || 0;
         const compSec = state.compressingSeconds || 0;
         const ccf = arrestSec > 0 ? Math.min(100, Math.round((compSec / arrestSec) * 100)) : 0;
         const totalHandsOff = Math.max(0, arrestSec - compSec);
 
+        // Tracker für Milestones & Intervalle
         let firstCPR = null, firstShock = null, firstAdr = null, firstAccess = null;
         let firstAirway = null, definitiveAirway = null, timeToRosc = null;
         let adrTimes = [], amioTimes = [], analyses = [];
@@ -247,30 +417,36 @@ window.CPR.LogTimeline = (function() {
         let anaToShockIntervals = [];
         let lastAnalysisTime = null;
 
+        // Logbuch 1x komplett durchlaufen
         data.forEach(d => {
             const t = d.action.toLowerCase();
             const sec = d.secondsFromStart;
 
+            // Erste Maßnahmen
             if (!firstCPR && (t.includes('start rea') || t.includes('kompression begonnen'))) firstCPR = sec;
             if (!firstShock && t.includes('schock abgegeben')) firstShock = sec;
             if (!firstAdr && t.includes('adrenalin')) firstAdr = sec;
             if (!firstAccess && t.includes('zugang:')) firstAccess = sec;
             
+            // ROSC
             if (t.includes('rosc') && !t.includes('re-arrest') && timeToRosc === null) timeToRosc = sec;
 
+            // Atemwegs-Eskalation
             if (t.includes('atemweg:') && !t.includes('entfernt')) {
                 const awType = d.action.split(':')[1]?.split('(')[0]?.trim() || 'Unbekannt';
                 if (!firstAirway) firstAirway = { time: sec, type: awType };
                 if (!t.includes('beutel-maske') && !definitiveAirway) definitiveAirway = { time: sec, type: awType };
             }
 
+            // Intervalle & Medikamente
             if (t.includes('adrenalin')) adrTimes.push(sec);
             if (t.includes('amiodaron') || t.includes('amio')) amioTimes.push(sec);
             if (t.includes('rhythmusanalyse') || t.includes('schockbar') || t.includes('nicht schockbar')) {
                 analyses.push(sec);
-                lastAnalysisTime = sec; 
+                lastAnalysisTime = sec; // Start für Pre-Shock Pause
             }
 
+            // Defibrillationen & Pre-Shock Pause
             if (t.includes('schock abgegeben')) {
                 shockCountStats++;
                 const match = d.action.match(/(\d+)\s*[jJ]/);
@@ -282,6 +458,7 @@ window.CPR.LogTimeline = (function() {
                 }
             }
 
+            // Pausen exakt mitloggen
             if ((t.includes('kompression') || t.includes('cpr')) && (t.includes('paus') || t.includes('stop') || t.includes('unterbroch'))) {
                 if (currentPauseStart === null) currentPauseStart = sec;
             } else if ((t.includes('kompression') || t.includes('cpr')) && (t.includes('fortgesetzt') || t.includes('start') || t.includes('weiter'))) {
@@ -292,10 +469,12 @@ window.CPR.LogTimeline = (function() {
             }
         });
 
+        // Laufende Pause am Ende
         if (currentPauseStart !== null && totalSec > currentPauseStart) {
             pauses.push(totalSec - currentPauseStart);
         }
 
+        // Mathematische Auswertung
         const format = window.CPR.Utils.formatTime;
         const maxPause = pauses.length > 0 ? Math.max(...pauses) : 0;
         
@@ -314,6 +493,7 @@ window.CPR.LogTimeline = (function() {
 
         let html = '<div class="p-4 flex flex-col gap-4 pb-12">';
 
+        // 1. CPR PERFORMANCE (Der CCF-Block)
         const ccfColor = ccf >= 80 ? 'text-emerald-500' : 'text-[#E3000F]';
         html += `
             <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
@@ -332,6 +512,7 @@ window.CPR.LogTimeline = (function() {
             </div>
         `;
 
+        // Hilfsfunktion für kleine Kacheln
         const renderRow = (label, val, icon, colorClass = 'text-slate-400', subText = null) => `
             <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                 <div class="flex items-center gap-3">
@@ -345,6 +526,7 @@ window.CPR.LogTimeline = (function() {
             </div>
         `;
 
+        // 2. SCHOCK-THERAPIE & RHYTHMUS
         const preShockText = avgAnaToShock > 0 ? `${avgAnaToShock} s` : '--';
         const preShockSub = avgAnaToShock > 0 ? `Min: ${minAnaToShock}s | Max: ${maxAnaToShock}s` : null;
         
@@ -360,6 +542,7 @@ window.CPR.LogTimeline = (function() {
             </div>
         `;
 
+        // 3. MEDIKAMENTE & PAUSEN
         html += `
             <div>
                 <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-2">Medikamente & Intervalle</h3>
@@ -371,6 +554,7 @@ window.CPR.LogTimeline = (function() {
             </div>
         `;
 
+        // 4. ATEMWEGS-MANAGEMENT
         html += `
             <div>
                 <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-2">Atemwegs-Management</h3>
@@ -381,6 +565,7 @@ window.CPR.LogTimeline = (function() {
             </div>
         `;
 
+        // 5. REAKTIONSZEITEN
         html += `
             <div>
                 <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-2">Reaktionszeiten (ab Start)</h3>
@@ -397,9 +582,50 @@ window.CPR.LogTimeline = (function() {
         container.innerHTML = html;
     }
 
+    // --- LIVE MARKER UPDATER ---
+    function updateLiveMarker() {
+        if (currentView !== 'timeline') return;
+        const state = window.CPR.AppState;
+        if (!state) return;
 
+        const currentAppSec = state.totalSeconds || 0;
+        
+        // Prüfen, ob wir in einen neuen 120s Block gelaufen sind -> dann neu rendern
+        const currentBlock = Math.floor(currentAppSec / 120);
+        if (window._lastRenderedBlock === undefined) window._lastRenderedBlock = currentBlock;
+        if (currentBlock !== window._lastRenderedBlock) {
+            window._lastRenderedBlock = currentBlock;
+            renderCurrentView();
+        }
+
+        const markers = document.querySelectorAll('.live-time-marker');
+        markers.forEach(marker => {
+            const blockStart = parseInt(marker.dataset.start);
+            const blockEnd = parseInt(marker.dataset.end);
+            if (currentAppSec >= blockStart && currentAppSec <= blockEnd) {
+                const pct = ((currentAppSec - blockStart) / 120) * 100;
+                marker.style.left = `${pct}%`;
+            }
+        });
+    }
+
+    function startLiveMarkerInterval() {
+        if (liveMarkerInterval) clearInterval(liveMarkerInterval);
+        liveMarkerInterval = setInterval(updateLiveMarker, 1000);
+    }
+    
+    function stopLiveMarkerInterval() {
+        if (liveMarkerInterval) { 
+            clearInterval(liveMarkerInterval); 
+            liveMarkerInterval = null; 
+        }
+    }
+
+
+    // --- 5. INITIALISIERUNG & DOM-INJEKTION ---
     function init() {
         try {
+            // A. KPI Tab in STATISTIK umbenennen
             const btnSumm = document.getElementById('btn-view-summary');
             if (btnSumm && btnSumm.parentElement && !document.getElementById('btn-view-stats')) {
                 const tabContainer = btnSumm.parentElement;
@@ -410,6 +636,7 @@ window.CPR.LogTimeline = (function() {
                 tabContainer.appendChild(btnStats);
             }
 
+            // B. ALLE 4 Content-Container injizieren
             const mainListContainer = document.getElementById('protocol-list');
             if (mainListContainer) {
                 ['list', 'timeline', 'summary', 'stats'].forEach(id => {
@@ -424,6 +651,7 @@ window.CPR.LogTimeline = (function() {
                 });
             }
 
+            // C. ULTRA-SAFE EVENT DELEGATION
             document.addEventListener('click', function(e) {
                 const tabBtn = e.target.closest('button[id^="btn-view-"]');
                 if (tabBtn) {
@@ -439,6 +667,7 @@ window.CPR.LogTimeline = (function() {
                 }
             });
 
+            // D. Startansicht sichern
             setTimeout(() => { switchTab('list'); }, 100);
             
         } catch (e) {
@@ -452,6 +681,7 @@ window.CPR.LogTimeline = (function() {
     };
 })();
 
+// Stabiler Autostart
 document.addEventListener('DOMContentLoaded', () => { 
     setTimeout(() => { 
         if (window.CPR && window.CPR.LogTimeline) window.CPR.LogTimeline.init(); 
