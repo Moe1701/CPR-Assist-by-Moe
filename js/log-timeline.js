@@ -3,6 +3,7 @@
  * - FEATURE: Neues "STATISTIK" Dashboard für das medizinische Debriefing.
  * - UX: Manuell erfasstes Alter und Gewicht aus der Anamnese wird nahtlos injiziert.
  * - PATCH: Re-Integration der horizontalen EKG-Style Timeline mit "Naked Icons" aus V56.
+ * - PATCH: Trennung von Adrenalin (💉) und Amiodaron (💊) in der Legende.
  */
 
 window.CPR = window.CPR || {};
@@ -189,11 +190,13 @@ window.CPR.LogTimeline = (function() {
         let html = `
         <div class="flex flex-col h-full overflow-hidden relative w-full">
             <div class="sticky top-0 z-50 bg-slate-50 border-b border-slate-200 px-2 py-2 shrink-0 shadow-sm">
+                <!-- Legende -->
                 <div class="bg-white p-1.5 rounded-xl border border-slate-100 flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5">
                     <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm">▶️</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Start</span></div>
                     <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm text-amber-500">⚡</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Schockbar</span></div>
                     <div class="flex items-center gap-1"><span class="text-[10px] font-black text-[#E3000F] drop-shadow-sm">150J</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Schock</span></div>
-                    <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm">💉</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Med.</span></div>
+                    <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm">💉</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Adr.</span></div>
+                    <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm">💊</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Amio.</span></div>
                     <div class="flex items-center gap-1"><span class="text-[13px] drop-shadow-sm">🫁</span><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Atemweg</span></div>
                     <div class="flex items-center gap-1"><div class="w-4 h-1 bg-red-500 rounded"></div><span class="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest">Pause</span></div>
                 </div>
@@ -220,6 +223,7 @@ window.CPR.LogTimeline = (function() {
                     <div class="absolute top-1/2 right-1 -translate-y-1/2 text-[8px] font-black text-slate-400 bg-white/80 px-1 z-10">${window.CPR.Utils.formatTime(cycleEndSec)}</div>
                     
                     <div class="absolute inset-y-0 left-7 right-7 pointer-events-none">
+                        <!-- Mittellinie -->
                         <div class="absolute top-1/2 left-0 right-0 h-[2px] bg-slate-100 rounded-full -translate-y-1/2 shadow-inner z-0"></div>
             `;
 
