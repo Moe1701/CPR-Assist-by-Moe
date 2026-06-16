@@ -10,6 +10,7 @@
  * - UI UPGRADE: Millimetergenaue Y-Positionen verhindern jedes Herausrutschen!
  * - ARCHITECTURE: Satelliten werden beim Öffnen von Menüs global im CSS ausgeblendet!
  * - TIME TRAVEL FIX: CPR und CCF-Berechnung laufen während App-Backgrounding lückenlos weiter.
+ * - CCF FIX: CCF und ArrestSeconds starten erst ab der ersten Kompression (mit Auto-Heal bei Reloads).
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -26,17 +27,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const shocks = AppState.shockCount || 0;
             
             vt.innerHTML = `
-                <!-- 1. Top: Bei Analyse drücken -->
                 <div class="vt-top-text">
                     <span id="timer-top-text">Bei Analyse drücken</span>
                 </div>
 
-                <!-- 2. Mitte: Der Timer -->
                 <div id="cycle-timer" class="vt-timer-display" style="font-variant-numeric: tabular-nums;">
                     02:00
                 </div>
 
-                <!-- 3. Unter dem Timer: Die Alerts -->
                 <div id="inner-prepare-alert" class="hidden vt-alert-box">
                     <div class="vt-alert-row">
                         <div class="vt-alert-dot bg-amber-500 animate-ping"></div>
@@ -53,14 +51,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span id="precharge-time" class="vt-alert-num text-[#E3000F]">15</span>
                 </div>
 
-                <!-- OVERLAP FIX: Redundanter Subtext "Jetzt hier drücken" wurde entfernt! -->
                 <div id="inner-analyze-alert" class="hidden vt-alert-box">
                     <div class="vt-analyze-badge animate-pulse">
                         <span class="vt-analyze-txt">Analyse Fällig</span>
                     </div>
                 </div>
 
-                <!-- 4. Unten: Schock Info -->
                 <div class="vt-bottom-info">
                     <i class="fa-solid fa-bolt text-amber-400"></i>
                     <span id="rhythm-info-shocks">${shocks}</span>
@@ -278,12 +274,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // =========================================================================
+    // 🌟 KUGELSICHERER MAIN TIMER MIT CCF-FIX UND AUTO-HEAL
+    // =========================================================================
     function startMainTimer() {
-        // Stats absolut sicher einblenden
         showTopStats();
         
         const startTimeEl = document.getElementById('start-time');
-        if (startTimeEl && startTimeEl.innerText === '--:--') startTimeEl.innerText = "Start: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        if (startTimeEl && startTimeEl.innerText === '--:--') {
+            startTimeEl.innerText = "Start: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        }
         
         if (Globals.mainInterval) clearInterval(Globals.mainInterval);
         
@@ -296,18 +296,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (deltaMs >= 1000) {
                     const deltaSec = Math.floor(deltaMs / 1000);
+                    
+                    // 1. Die generelle Einsatz-Uhr läuft immer weiter (für Rüstzeit & Logbuch)
                     AppState.totalSeconds += deltaSec;
-                    if (AppState.state !== 'ROSC_ACTIVE') {
+                    
+                    // 2. AUTO-HEAL & TRIGGER: Hat die CPR angefangen?
+                    // (Wenn isCompressing true ist ODER in der Vergangenheit schon arrestSeconds gesammelt wurden)
+                    if (AppState.isCompressing || AppState.arrestSeconds > 0) {
+                        AppState.hasStartedCPR = true; 
+                    }
+                    
+                    // 3. CCF-Nenner (arrestSeconds) tickt erst ab dem Moment, wo hasStartedCPR = true ist
+                    if (AppState.state !== 'ROSC_ACTIVE' && AppState.hasStartedCPR) {
                         AppState.arrestSeconds += deltaSec;
                         if (AppState.isCompressing) AppState.compressingSeconds += deltaSec;
                         else if (AppState.isVentilationPhase) AppState.ventilationSeconds = (AppState.ventilationSeconds || 0) + deltaSec;
                     }
                     
+                    // UI Updates
                     const mainTimerEl = document.getElementById('main-timer');
                     if (mainTimerEl) mainTimerEl.innerText = Utils.formatTime(AppState.totalSeconds);
-                    updateCCF(); 
                     
-                    // 🌟 LÖSUNG: Checkt nun zuverlässig in JEDER Sekunde, in welcher der 3 Stufen wir sind!
+                    const obTimerEl = document.getElementById('ob-timer-display');
+                    if (obTimerEl) obTimerEl.innerText = Utils.formatTime(AppState.totalSeconds);
+
+                    updateCCF(); 
                     checkSmartAirwayPrompt(); 
                     
                     Utils.saveSession();
@@ -603,6 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
         addClick('btn-settings', () => { Utils.vibrate(20); document.getElementById('settings-modal')?.classList.replace('hidden', 'flex'); });
     }
 
+    // 🌟 SETUP MIT CCF FIX (hasStartedCPR Reset) 🌟
     function initPatientSetupEvents() {
         const sAge = document.getElementById('slider-age'); const sKg = document.getElementById('slider-kg'); const sCm = document.getElementById('slider-cm');
         const valAge = document.getElementById('val-age'); const valKg = document.getElementById('val-kg'); const valCm = document.getElementById('val-cm');
@@ -641,39 +655,62 @@ document.addEventListener('DOMContentLoaded', function() {
 
         addClick('btn-start-adult', () => {
             if (AudioEngine && typeof AudioEngine.init === 'function') AudioEngine.init();
-            Utils.vibrate(40); AppState.isPediatric = false; AppState.patientWeight = null; AppState.cprMode = 'continuous'; AppState.compressionCount = 0; 
+            Utils.vibrate(40); 
+            AppState.isPediatric = false; AppState.patientWeight = null; AppState.cprMode = 'continuous'; AppState.compressionCount = 0; 
             
-            // 🌟 DEFER: Kompression und Timer laufen noch NICHT!
-            AppState.isRunning = false; AppState.isCompressing = false;
+            AppState.isRunning = true; 
+            AppState.isCompressing = false;
+            AppState.hasStartedCPR = false; // Sicheres Reset!
             
-            if(UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); if(UI && typeof UI.recalcMeds === 'function') UI.recalcMeds(); 
-            addLogEntry("Patient: Erwachsener"); navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); Utils.saveSession();
+            if(UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); 
+            if(UI && typeof UI.recalcMeds === 'function') UI.recalcMeds(); 
+            
+            addLogEntry("Patient: Erwachsener"); 
+            startMainTimer(); 
+            navHelper('OB_COMPRESSIONS', 'view-ob-2', 'large'); 
+            Utils.saveSession();
         });
 
         addClick('btn-start-child', (e) => { e.stopPropagation(); Utils.vibrate(40); if (sKg && parseInt(sKg.value) === 4) sync('kg'); const m = document.getElementById('patient-setup-modal'); if(m) m.classList.replace('hidden', 'flex'); });
 
         addClick('btn-start-pediatric', () => {
             if (AudioEngine && typeof AudioEngine.init === 'function') AudioEngine.init();
-            Utils.vibrate(40); AppState.isPediatric = true; AppState.patientWeight = parseFloat(sKg.value); AppState.cprMode = 'continuous'; AppState.compressionCount = 0; 
+            Utils.vibrate(40); 
+            AppState.isPediatric = true; AppState.patientWeight = parseFloat(sKg.value); AppState.cprMode = 'continuous'; AppState.compressionCount = 0; 
             
-            // 🌟 DEFER: Kompression und Timer laufen noch NICHT!
-            AppState.isRunning = false; AppState.isCompressing = false;
+            AppState.isRunning = true; 
+            AppState.isCompressing = false;
+            AppState.hasStartedCPR = false; // Sicheres Reset!
             
             document.getElementById('patient-setup-modal')?.classList.replace('flex', 'hidden');
-            if(UI && typeof UI.updatePediatricUI === 'function') UI.updatePediatricUI(); if(UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); if(UI && typeof UI.recalcMeds === 'function') UI.recalcMeds(); 
-            addLogEntry(`Patient: Kind (${AppState.patientWeight}kg)`); navHelper('OB_INITIAL_BREATHS', 'view-initial-breaths', 'large'); Utils.saveSession();
+            if(UI && typeof UI.updatePediatricUI === 'function') UI.updatePediatricUI(); 
+            if(UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); 
+            if(UI && typeof UI.recalcMeds === 'function') UI.recalcMeds(); 
+            
+            addLogEntry(`Patient: Kind (${AppState.patientWeight}kg)`); 
+            startMainTimer(); 
+            navHelper('OB_INITIAL_BREATHS', 'view-initial-breaths', 'large'); 
+            Utils.saveSession();
         });
 
         addClick('btn-start-pediatric-unknown', () => {
             if (AudioEngine && typeof AudioEngine.init === 'function') AudioEngine.init();
-            Utils.vibrate(40); AppState.isPediatric = true; AppState.patientWeight = null; AppState.cprMode = 'continuous'; AppState.compressionCount = 0; 
+            Utils.vibrate(40); 
+            AppState.isPediatric = true; AppState.patientWeight = null; AppState.cprMode = 'continuous'; AppState.compressionCount = 0; 
             
-            // 🌟 DEFER: Kompression und Timer laufen noch NICHT!
-            AppState.isRunning = false; AppState.isCompressing = false;
+            AppState.isRunning = true; 
+            AppState.isCompressing = false;
+            AppState.hasStartedCPR = false; // Sicheres Reset!
             
             document.getElementById('patient-setup-modal')?.classList.replace('flex', 'hidden');
-            if(UI && typeof UI.updatePediatricUI === 'function') UI.updatePediatricUI(); if(UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); if(UI && typeof UI.recalcMeds === 'function') UI.recalcMeds(); 
-            addLogEntry("Patient: Kind (Gewicht unbekannt)"); navHelper('OB_INITIAL_BREATHS', 'view-initial-breaths', 'large'); Utils.saveSession();
+            if(UI && typeof UI.updatePediatricUI === 'function') UI.updatePediatricUI(); 
+            if(UI && typeof UI.updateCprModeUI === 'function') UI.updateCprModeUI(); 
+            if(UI && typeof UI.recalcMeds === 'function') UI.recalcMeds(); 
+            
+            addLogEntry("Patient: Kind (Gewicht unbekannt)"); 
+            startMainTimer(); 
+            navHelper('OB_INITIAL_BREATHS', 'view-initial-breaths', 'large'); 
+            Utils.saveSession();
         });
     }
 
