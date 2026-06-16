@@ -1,8 +1,9 @@
 /**
- * CPR Assist - Export Modul (V65 - Smart Timeline Layout)
+ * CPR Assist - Export Modul (V66 - Max-Space Timeline Layout)
  * - FEATURE: Neues "PERFORMANCE INSIGHTS" Blatt (Seite 2) im Debriefing-Modus.
  * - UX: Manuell erfasstes Alter und Gewicht aus der Anamnese wird nahtlos in die PDF Übergabe injiziert.
- * - LAYOUT: Entzerrte 4-Track Zeitlinie mit 8-Ebenen-Staggering und Auto-Text-Shortening zur Vermeidung von Überlappungen.
+ * - LAYOUT: Entzerrte 4-Track Zeitlinie mit noch mehr vertikalem Platz (230px Abstand).
+ * - LAYOUT: 8-Ebenen-Staggering (bis zu 115px Offset) und Auto-Text-Shortening zur Vermeidung von Überlappungen.
  */
 
 window.CPR = window.CPR || {};
@@ -65,7 +66,6 @@ window.CPR.Export = (function() {
         const compSec = state.compressingSeconds || 0;
         const ccf = arrSec > 0 ? Math.min(100, Math.round((compSec / arrSec) * 100)) : 0;
         
-        // 🌟 NEU: Integriert Alter & Gewicht aus den SAMPLER Leitfragen 🌟
         let ageStr = state.isPediatric ? (state.patientWeight ? `Kind (${state.patientWeight} kg)` : 'Kind (Gewicht unbek.)') : 'Erwachsener';
         if (aData.alter || aData.gewicht) {
             let zusatz = [];
@@ -441,7 +441,6 @@ window.CPR.Export = (function() {
         }
     }
 
-    // 🌟 KERN-FIX: Smartes Text-Shortening & großzügiges 4-Track Staggering 🌟
     function createTimelineCanvasChunk(data, pauses, pageIndex, maxSecOverall) {
         const events = data.map(d => ({ ...d, iconData: getIconData(d.action), timeStr: window.CPR.Utils.formatRelative(d.secondsFromStart) })).filter(d => d.iconData !== null);
         
@@ -450,7 +449,8 @@ window.CPR.Export = (function() {
         const scale = 2; 
         
         const baseWidth = 1400; 
-        const baseHeight = 900; 
+        // 🌟 NEU: 1000px Höhe, für perfekte A4 Proportionen
+        const baseHeight = 1000; 
         
         canvas.width = baseWidth * scale;
         canvas.height = baseHeight * scale;
@@ -470,7 +470,7 @@ window.CPR.Export = (function() {
         const usableWidth = baseWidth - (paddingX * 2);
         
         const cycleDuration = 240; 
-        // WICHTIG: 4 statt 5 Linien pro Seite für mehr vertikalen Platz
+        // 🌟 NEU: 4 statt 5 Linien pro Seite für mehr vertikalen Platz
         const startSecForPage = pageIndex * 4 * cycleDuration;
 
         for (let i = 0; i < 4; i++) {
@@ -478,8 +478,8 @@ window.CPR.Export = (function() {
             if (currentDrawSec > maxSecOverall && i > 0) break;
             const cycleEndSec = currentDrawSec + cycleDuration;
             
-            // Viel mehr Luft: Start bei Y=160, jede weitere Linie +200px
-            const lineY = 160 + (i * 200);
+            // 🌟 NEU: Enorm viel mehr Luft zwischen den Linien (230px statt 150px)
+            const lineY = 170 + (i * 230);
 
             ctx.beginPath(); ctx.moveTo(paddingX, lineY); ctx.lineTo(baseWidth - paddingX, lineY);
             ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.stroke();
@@ -532,10 +532,10 @@ window.CPR.Export = (function() {
                 const pct = secInCycle / cycleDuration;
                 const x = paddingX + (pct * usableWidth);
 
-                // 🌟 NEU: 8-Ebenen-Treppe, nutzt die vollen 200px Platz
-                const yOffsets = [20, -20, 45, -45, 70, -70, 95, -95];
+                // 🌟 NEU: 8-Ebenen-Treppe, die extrem weit auseinanderfächert
+                const yOffsets = [25, -25, 55, -55, 85, -85, 115, -115];
                 const yOff = yOffsets[index % yOffsets.length];
-                const boxHeight = 26; // Etwas schlanker
+                const boxHeight = 26; 
                 const boxY = lineY + yOff - boxHeight/2;
 
                 // 🌟 NEU: Auto-Shortening der Texte
@@ -556,7 +556,7 @@ window.CPR.Export = (function() {
                 const boxHalf = boxWidth / 2;
 
                 ctx.beginPath(); ctx.moveTo(x, lineY); ctx.lineTo(x, lineY + yOff);
-                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.0; ctx.stroke(); // Dünnerer Strich
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.0; ctx.stroke(); 
 
                 ctx.shadowColor = 'rgba(0,0,0,0.05)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
                 ctx.fillStyle = '#ffffff';
