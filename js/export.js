@@ -1,7 +1,8 @@
 /**
- * CPR Assist - Export Modul (V64 - SAMPLER Alter/Gewicht Integration)
+ * CPR Assist - Export Modul (V65 - Smart Timeline Layout)
  * - FEATURE: Neues "PERFORMANCE INSIGHTS" Blatt (Seite 2) im Debriefing-Modus.
  * - UX: Manuell erfasstes Alter und Gewicht aus der Anamnese wird nahtlos in die PDF Übergabe injiziert.
+ * - LAYOUT: Entzerrte 4-Track Zeitlinie mit 8-Ebenen-Staggering und Auto-Text-Shortening zur Vermeidung von Überlappungen.
  */
 
 window.CPR = window.CPR || {};
@@ -189,9 +190,9 @@ window.CPR.Export = (function() {
         y += 10;
 
         doc.setFillColor(248, 250, 252); doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.2);
-        doc.roundedRect(15, y, 65, 24, 2, 2, 'FD');  // Patient (Breiter gemacht für Alter & Gewicht)
-        doc.roundedRect(85, y, 35, 24, 2, 2, 'FD');  // Dauer
-        doc.roundedRect(125, y, 70, 24, 2, 2, 'FD'); // Status
+        doc.roundedRect(15, y, 65, 24, 2, 2, 'FD');  
+        doc.roundedRect(85, y, 35, 24, 2, 2, 'FD');  
+        doc.roundedRect(125, y, 70, 24, 2, 2, 'FD'); 
         
         doc.setFontSize(8); doc.setTextColor(100, 116, 139); doc.setFont("helvetica", "normal");
         doc.text("PATIENT", 47.5, y+6, {align: 'center'});
@@ -440,6 +441,7 @@ window.CPR.Export = (function() {
         }
     }
 
+    // 🌟 KERN-FIX: Smartes Text-Shortening & großzügiges 4-Track Staggering 🌟
     function createTimelineCanvasChunk(data, pauses, pageIndex, maxSecOverall) {
         const events = data.map(d => ({ ...d, iconData: getIconData(d.action), timeStr: window.CPR.Utils.formatRelative(d.secondsFromStart) })).filter(d => d.iconData !== null);
         
@@ -468,13 +470,16 @@ window.CPR.Export = (function() {
         const usableWidth = baseWidth - (paddingX * 2);
         
         const cycleDuration = 240; 
-        const startSecForPage = pageIndex * 5 * cycleDuration;
+        // WICHTIG: 4 statt 5 Linien pro Seite für mehr vertikalen Platz
+        const startSecForPage = pageIndex * 4 * cycleDuration;
 
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 4; i++) {
             const currentDrawSec = startSecForPage + (i * cycleDuration);
             if (currentDrawSec > maxSecOverall && i > 0) break;
             const cycleEndSec = currentDrawSec + cycleDuration;
-            const lineY = 160 + (i * 150);
+            
+            // Viel mehr Luft: Start bei Y=160, jede weitere Linie +200px
+            const lineY = 160 + (i * 200);
 
             ctx.beginPath(); ctx.moveTo(paddingX, lineY); ctx.lineTo(baseWidth - paddingX, lineY);
             ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.stroke();
@@ -527,19 +532,31 @@ window.CPR.Export = (function() {
                 const pct = secInCycle / cycleDuration;
                 const x = paddingX + (pct * usableWidth);
 
-                const yOffsets = [15, -15, 35, -35, 55, -55];
+                // 🌟 NEU: 8-Ebenen-Treppe, nutzt die vollen 200px Platz
+                const yOffsets = [20, -20, 45, -45, 70, -70, 95, -95];
                 const yOff = yOffsets[index % yOffsets.length];
-                const boxHeight = 28;
+                const boxHeight = 26; // Etwas schlanker
                 const boxY = lineY + yOff - boxHeight/2;
 
-                const actionText = ev.action.length > 35 ? ev.action.substring(0, 35) + '...' : ev.action;
+                // 🌟 NEU: Auto-Shortening der Texte
+                let shortText = ev.action;
+                shortText = shortText.replace(/Schock abgegeben:/i, 'Schock:');
+                shortText = shortText.replace(/Kompression begonnen/i, 'CPR Start');
+                shortText = shortText.replace(/Kompression FORTGESETZT/i, 'CPR Fortgesetzt');
+                shortText = shortText.replace(/Rhythmusanalyse \(Kompression PAUSE\)/i, 'Analyse (Pause)');
+                shortText = shortText.replace(/Rhythmusanalyse/i, 'Analyse');
+                shortText = shortText.replace(/nicht schockbar/i, 'Nicht schockbar');
+                shortText = shortText.replace(/schockbar/i, 'Schockbar');
+                
+                const actionText = shortText.length > 30 ? shortText.substring(0, 30) + '...' : shortText;
+                
                 const textWidth = ctx.measureText(actionText).width;
                 const timeWidth = ctx.measureText(`[${ev.timeStr}]`).width;
                 const boxWidth = textWidth + timeWidth + 40;
                 const boxHalf = boxWidth / 2;
 
                 ctx.beginPath(); ctx.moveTo(x, lineY); ctx.lineTo(x, lineY + yOff);
-                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.0; ctx.stroke(); // Dünnerer Strich
 
                 ctx.shadowColor = 'rgba(0,0,0,0.05)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
                 ctx.fillStyle = '#ffffff';
@@ -558,7 +575,8 @@ window.CPR.Export = (function() {
                 ctx.fillStyle = '#334155'; ctx.font = 'bold 12px Arial';
                 ctx.fillText(`${ev.iconData.icon} ${actionText}`, x - boxHalf + 10 + timeWidth + 5, boxY + boxHeight/2);
 
-                ctx.beginPath(); ctx.arc(x, lineY, 4, 0, 2 * Math.PI); ctx.fillStyle = '#334155'; ctx.fill();
+                // Kleiner Ankerpunkt
+                ctx.beginPath(); ctx.arc(x, lineY, 3, 0, 2 * Math.PI); ctx.fillStyle = '#475569'; ctx.fill();
             });
         }
         return canvas;
@@ -618,12 +636,14 @@ window.CPR.Export = (function() {
             const data = AppState.protocolData;
             const maxSec = facts.maxSec;
             const pauses = facts.pausesObj;
-            const totalPagesTimeline = Math.max(1, Math.ceil(maxSec / (5 * 240))); 
+            
+            // 🌟 NEU: Berechnung der Seiten für 4 Tracks pro Seite
+            const totalPagesTimeline = Math.max(1, Math.ceil(maxSec / (4 * 240))); 
 
             for (let p = 0; p < totalPagesTimeline; p++) {
                 doc.addPage('a4', 'landscape');
                 const canvas = createTimelineCanvasChunk(data, pauses, p, maxSec);
-                const imgData = canvas.toDataURL('image/jpeg', 0.7); 
+                const imgData = canvas.toDataURL('image/jpeg', 0.8); 
                 doc.addImage(imgData, 'JPEG', 10, 10, 277, 190, undefined, 'FAST');
                 
                 doc.setFontSize(8); doc.setTextColor(148, 163, 184); doc.setFont("helvetica", "normal");
